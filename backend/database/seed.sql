@@ -46,8 +46,8 @@ INSERT INTO equipement (
     '192.168.1.103',                    -- IP statique de ta VM
     '00:0c:29:04:8f:9e',                -- MAC address 
     'localhost',                        -- hostname
-    'SERVEUR',                          -- type ENUM (pas 'Serveur')
-    'EN_LIGNE',                         -- statut ENUM (pas 'EN_LIGNE')
+    'SERVEUR',                          -- type ENUM
+    'EN_LIGNE',                         -- statut ENUM 
     NOW(),                              -- dernier_vu = maintenant
     70.0,                               -- seuil_cpu_warning
     90.0,                               -- seuil_cpu_critique

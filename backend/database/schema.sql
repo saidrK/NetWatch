@@ -21,6 +21,8 @@ DROP TYPE IF EXISTS canal_enum CASCADE;
 DROP TYPE IF EXISTS type_equipement_enum;
 DROP TYPE IF EXISTS format_rapport_enum;
 DROP TYPE IF EXISTS statut_connexion_enum;
+DROP TYPE IF EXISTS type_generation_enum;
+
 
 CREATE TYPE role_enum AS ENUM (
     'ADMINISTRATEUR',
@@ -53,6 +55,8 @@ CREATE TYPE format_rapport_enum AS ENUM (
 );
 
 CREATE TYPE statut_connexion_enum AS ENUM ( 'SUCCES', 'ECHEC');
+
+CREATE TYPE type_generation_enum AS ENUM ( 'AUTOMATIQUE', 'MANUEL');
 
 -- ============================================================
 -- TABLE : utilisateur (classe abstraite)
@@ -195,6 +199,10 @@ CREATE TABLE rapport (
     chemin_fichier  VARCHAR(500) NULL,
     date_generation TIMESTAMP   NOT NULL DEFAULT NOW()
 );
+
+-- Modification la table rapport
+ALTER TABLE rapport 
+ADD COLUMN type_generation type_generation_enum NOT NULL DEFAULT 'MANUEL';
 
 COMMENT ON TABLE rapport IS 'Rapports générés en PDF, Excel ou CSV';
 
