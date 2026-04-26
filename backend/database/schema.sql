@@ -21,6 +21,8 @@ DROP TYPE IF EXISTS canal_enum CASCADE;
 DROP TYPE IF EXISTS type_equipement_enum;
 DROP TYPE IF EXISTS format_rapport_enum;
 DROP TYPE IF EXISTS statut_connexion_enum;
+DROP TYPE IF EXISTS type_generation_enum;
+
 
 CREATE TYPE role_enum AS ENUM (
     'ADMINISTRATEUR',
