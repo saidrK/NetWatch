@@ -206,6 +206,15 @@ ADD COLUMN type_generation type_generation_enum NOT NULL DEFAULT 'MANUEL';
 
 COMMENT ON TABLE rapport IS 'Rapports générés en PDF, Excel ou CSV';
 
+-- Modification dans la table notification
+ALTER TABLE notification
+ADD COLUMN utilisateur_id INTEGER NULL REFERENCES utilisateur(id) ON DELETE SET NULL;
+
+COMMENT ON COLUMN notification.utilisateur_id IS
+'Utilisateur destinataire identifié dans le système (optionnel).
+ NULL si destinataire externe non enregistré (canal Telegram groupe, email externe).
+ Matérialise la relation UML Notification ——destinée à——> Utilisateur.';
+
 -- ============================================================
 -- INDEX pour optimiser les requêtes fréquentes
 -- ============================================================
@@ -241,6 +250,10 @@ CREATE INDEX idx_rapport_utilisateur
 -- Equipement par statut
 CREATE INDEX idx_equipement_statut 
     ON equipement(statut);
+
+-- Filtrer notifications par utilisateur
+CREATE INDEX idx_notification_utilisateur
+    ON notification(utilisateur_id);
 
 -- ============================================================
 -- FIN DU SCHEMA
