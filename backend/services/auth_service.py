@@ -8,9 +8,9 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.config import get_settings
-from backend.models.utilisateur import Utilisateur, RoleUtilisateur
-from backend.models.historique_connexion import HistoriqueConnexion, StatutConnexion
+from config import get_settings
+from models.utilisateur import Utilisateur, RoleUtilisateur
+from models.historique_connexion import HistoriqueConnexion, StatutConnexion
 
 settings = get_settings()
 

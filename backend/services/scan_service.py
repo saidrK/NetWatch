@@ -1,139 +1,152 @@
-# service d'authentification
+"""
+— Intégration Nmap → FastAPI
+Appelle la logique de scan_reseau.py depuis l'API REST
+"""
+import logging
+from datetime import datetime
 
-from datetime import datetime, timedelta
-from typing import Optional
-
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import nmap
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.config import get_settings
-from backend.models.utilisateur import Utilisateur, RoleUtilisateur
-from backend.models.historique_connexion import HistoriqueConnexion, StatutConnexion
+from config import get_settings
+from models.equipement import Equipement, Port, StatutEquipement, TypeEquipement
 
+logger   = logging.getLogger(__name__)
 settings = get_settings()
 
-# ─── Contexte bcrypt ──────────────────────────────────────
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Heuristique type équipement
+def _deviner_type(hostname: str, os_detecte: str, ports: list[int]) -> TypeEquipement:
+    h = (hostname or "").lower()
+    o = (os_detecte or "").lower()
+
+    if any(k in h for k in ["router", "routeur", "gw", "gateway"]):
+        return TypeEquipement.ROUTEUR
+    if any(k in h for k in ["switch", "sw-"]):
+        return TypeEquipement.SWITCH
+    if any(k in h for k in ["srv", "server", "serveur", "web", "db"]):
+        return TypeEquipement.SERVEUR
+    if any(k in h for k in ["printer", "imprimante"]):
+        return TypeEquipement.IMPRIMANTE
+    if any(k in o for k in ["cisco", "juniper"]):
+        return TypeEquipement.ROUTEUR
+    if any(k in o for k in ["linux", "ubuntu", "rhel", "windows server"]):
+        return TypeEquipement.SERVEUR
+    if any(k in o for k in ["windows 10", "windows 11", "macos"]):
+        return TypeEquipement.PC
+    return TypeEquipement.AUTRE
 
 
-# ─── Utilitaires mots de passe ────────────────────────────
-def hasher_mot_de_passe(mot_de_passe: str) -> str:
-    """Retourne le hash bcrypt du mot de passe."""
-    return pwd_context.hash(mot_de_passe)
-
-
-def verifier_mot_de_passe(mot_de_passe: str, hash: str) -> bool:
-    """Vérifie un mot de passe en clair contre son hash bcrypt."""
-    return pwd_context.verify(mot_de_passe, hash)
-
-
-# ─── JWT ──────────────────────────────────────────────────
-def creer_token(data: dict, expire_heures: Optional[int] = None) -> str:
+# ─── Scan principal ───────────────────────────────────────
+async def lancer_scan(
+    db: AsyncSession,
+    plage: str = None,
+) -> dict:
     """
-    Crée un token JWT signé avec les données fournies.
-    Expire dans jwt_expire_hours heures (depuis .env).
+    Lance un scan Nmap sur la plage IP et sauvegarde dans PostgreSQL.
+    Retourne un résumé des résultats.
     """
-    payload = data.copy()
-    expire = datetime.utcnow() + timedelta(
-        hours=expire_heures or settings.jwt_expire_hours
-    )
-    payload.update({"exp": expire, "iat": datetime.utcnow()})
-    return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+    plage = plage or settings.reseau_plage
+    logger.info(f"🔍 Scan Nmap sur {plage}...")
 
-
-def verifier_token(token: str) -> Optional[dict]:
-    """
-    Vérifie et décode un token JWT.
-    Retourne le payload si valide, None sinon.
-    """
+    nm = nmap.PortScanner()
     try:
-        return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-    except JWTError:
-        return None
+        nm.scan(hosts=plage, arguments="-sV -T4 --open")
+    except Exception as e:
+        logger.error(f"❌ Nmap error: {e}")
+        raise RuntimeError(f"Erreur Nmap : {e}")
 
+    hotes = nm.all_hosts()
+    resultats = {
+        "plage": plage,
+        "timestamp": datetime.utcnow().isoformat(),
+        "hotes_detectes": len(hotes),
+        "equipements_sauvegardes": 0,
+        "ports_sauvegardes": 0,
+    }
 
-# Authentification utilisateur
-async def authentifier(
-    db: AsyncSession,
-    email: str,
-    mot_de_passe: str,
-    adresse_ip: str = "0.0.0.0",
-    user_agent: str = None,
-) -> Optional[Utilisateur]:
-    """
-    Vérifie les credentials et enregistre l'historique de connexion.
-    Retourne l'utilisateur si OK, None si échec.
-    """
-    # Chercher l'utilisateur par email
-    result = await db.execute(
-        select(Utilisateur).where(Utilisateur.email == email)
-    )
-    utilisateur = result.scalar_one_or_none()
+    for host in hotes:
+        try:
+            info      = nm[host]
+            hostname  = info.hostname() or None
+            mac       = info["addresses"].get("mac", None)
+            os_match  = info.get("osmatch", [])
+            os_detecte = os_match[0]["name"] if os_match else None
 
-    # Vérification mot de passe
-    if not utilisateur or not verifier_mot_de_passe(mot_de_passe, utilisateur.mot_de_passe_hash):
-        # Enregistrer l'échec
-        if utilisateur:
-            await _enregistrer_connexion(db, utilisateur.id, StatutConnexion.ECHEC, adresse_ip, user_agent)
-        return None
+            # Ports ouverts
+            ports_list = []
+            for proto in info.all_protocols():
+                for numero, details in info[proto].items():
+                    if details["state"] == "open":
+                        ports_list.append({
+                            "numero":    numero,
+                            "protocole": proto,
+                            "service":   details.get("name"),
+                            "version":   f"{details.get('product','')} {details.get('version','')}".strip() or None,
+                        })
 
-    if not utilisateur.actif:
-        return None
+            type_eq = _deviner_type(hostname, os_detecte, [p["numero"] for p in ports_list])
 
-    # Mettre à jour derniere_connexion
-    utilisateur.derniere_connexion = datetime.utcnow()
+            # UPSERT équipement
+            result = await db.execute(
+                select(Equipement).where(Equipement.adresse_ip == host)
+            )
+            eq = result.scalar_one_or_none()
 
-    # Enregistrer le succès
-    await _enregistrer_connexion(db, utilisateur.id, StatutConnexion.SUCCES, adresse_ip, user_agent)
+            if eq:
+                eq.adresse_mac = mac or eq.adresse_mac
+                eq.hostname    = hostname or eq.hostname
+                eq.type        = type_eq
+                eq.statut      = StatutEquipement.EN_LIGNE
+                eq.os_detecte  = os_detecte or eq.os_detecte
+                eq.dernier_vu  = datetime.utcnow()
+            else:
+                eq = Equipement(
+                    adresse_ip=host,
+                    adresse_mac=mac,
+                    hostname=hostname,
+                    type=type_eq,
+                    statut=StatutEquipement.EN_LIGNE,
+                    os_detecte=os_detecte,
+                    dernier_vu=datetime.utcnow(),
+                )
+                db.add(eq)
+                await db.flush()
 
-    return utilisateur
+            # Supprimer anciens ports + réinsérer
+            old_ports = await db.execute(select(Port).where(Port.equipement_id == eq.id))
+            for p in old_ports.scalars():
+                await db.delete(p)
 
+            for p in ports_list:
+                db.add(Port(
+                    equipement_id=eq.id,
+                    numero=p["numero"],
+                    protocole=p["protocole"],
+                    service=p["service"],
+                    version=p["version"],
+                    ouvert=True,
+                ))
 
-async def _enregistrer_connexion(
-    db: AsyncSession,
-    utilisateur_id: int,
-    statut: StatutConnexion,
-    adresse_ip: str,
-    user_agent: str = None,
-):
-    """Enregistre une tentative de connexion dans l'historique (BF01)."""
-    historique = HistoriqueConnexion(
-        utilisateur_id=utilisateur_id,
-        statut=statut,
-        adresse_ip=adresse_ip,
-        user_agent=user_agent,
-        date_connexion=datetime.utcnow(),
-    )
-    db.add(historique)
+            resultats["equipements_sauvegardes"] += 1
+            resultats["ports_sauvegardes"]       += len(ports_list)
+            logger.info(f"  ✅ {host} | {hostname or 'N/A'} | {len(ports_list)} ports")
+
+        except Exception as e:
+            logger.error(f"  ❌ Erreur {host} : {e}")
+
+    # Marquer HORS_LIGNE les équipements non détectés
+    await _marquer_hors_ligne(db, hotes)
+
     await db.flush()
+    return resultats
 
 
-# Récupérer utilisateur courant depuis token
-async def get_utilisateur_courant(
-    db: AsyncSession,
-    token: str,
-) -> Optional[Utilisateur]:
-    """
-    Decode le token JWT et retourne l'utilisateur correspondant.
-    Utilisé comme dépendance FastAPI dans les routes protégées.
-    """
-    payload = verifier_token(token)
-    if not payload:
-        return None
-
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-
-    result = await db.execute(
-        select(Utilisateur).where(Utilisateur.id == int(user_id))
-    )
-    return result.scalar_one_or_none()
-
-
-# Vérification des rôles
-def verifier_role(utilisateur: Utilisateur, role_requis: RoleUtilisateur) -> bool:
-    """Vérifie que l'utilisateur possède le rôle requis."""
-    return utilisateur.role == role_requis
+async def _marquer_hors_ligne(db: AsyncSession, ips_detectees: list[str]):
+    """Marque HORS_LIGNE les équipements absents du dernier scan."""
+    result = await db.execute(select(Equipement))
+    tous = result.scalars().all()
+    for eq in tous:
+        if eq.adresse_ip not in ips_detectees:
+            eq.statut = StatutEquipement.HORS_LIGNE
