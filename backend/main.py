@@ -10,7 +10,6 @@ from fastapi.responses import JSONResponse
 
 from config import get_settings
 from database.postgresql import init_db, close_db
-from database.influxdb import close_influxdb
 
 # Logging 
 logging.basicConfig(
@@ -30,7 +29,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Démarrage de la plateforme de supervision réseau...")
     await init_db()
     logger.info("✅ PostgreSQL initialisé")
-    logger.info("✅ InfluxDB connecté")
+
     logger.info(f"🌍 Environnement : {settings.environment}")
 
     yield  # L'application tourne ici
@@ -38,7 +37,7 @@ async def lifespan(app: FastAPI):
     # Shutdown 
     logger.info("🛑 Arrêt de la plateforme...")
     await close_db()
-    await close_influxdb()
+
     logger.info("✅ Ressources libérées proprement")
 
 
@@ -71,7 +70,7 @@ app.add_middleware(
 
 # Routes API v1 
 # Importés ici pour éviter les imports circulaires au démarrage
-from api.v1 import auth, utilisateurs, equipements, metriques, alertes, rapports, websocket  # noqa: E402
+from api.v1 import auth, utilisateurs, equipements, metriques, alertes, rapports, websocket # noqa: E402
 
 app.include_router(auth.router,         prefix="/api/v1/auth",         tags=["🔐 Authentification"])
 app.include_router(utilisateurs.router, prefix="/api/v1/utilisateurs", tags=["👥 Utilisateurs"])

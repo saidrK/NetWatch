@@ -47,7 +47,7 @@ CREATE TYPE canal_enum AS ENUM (
 );
 
 CREATE TYPE type_equipement_enum AS ENUM (
-    'SERVEUR', 'ROUTEUR', 'SWITCH', 'PC', 'INCONNU'
+    'SERVEUR', 'ROUTEUR', 'SWITCH', 'PC', 'IMPRIMANTE', 'INCONNU'
 );
 
 CREATE TYPE format_rapport_enum AS ENUM (
@@ -142,6 +142,7 @@ CREATE TABLE port (
     numero          INTEGER     NOT NULL CHECK (numero BETWEEN 1 AND 65535),
     protocole       VARCHAR(5)  NOT NULL CHECK (protocole IN ('TCP', 'UDP')),
     service         VARCHAR(100) NULL,
+    service_version         VARCHAR(255) NULL,
     ouvert          BOOLEAN     NOT NULL DEFAULT TRUE,
     UNIQUE (equipement_id, numero, protocole)
 );
@@ -162,13 +163,13 @@ CREATE TABLE alerte (
     valeur_bp        FLOAT               NOT NULL DEFAULT 0.0,
     timestamp       TIMESTAMP           NOT NULL DEFAULT NOW(),
     acquittee       BOOLEAN             NOT NULL DEFAULT FALSE,
-    acquitte_par    INTEGER             NULL REFERENCES utilisateur(id) ON DELETE SET NULL,
+    acquitte_par_id    INTEGER          NULL REFERENCES utilisateur(id) ON DELETE SET NULL,
     acquitte_le     TIMESTAMP           NULL
 );
 
 COMMENT ON TABLE alerte IS 'Incidents détectés par Isolation Forest';
 COMMENT ON COLUMN alerte.score_anomalie IS 'Score calculé par Isolation Forest — plus élevé = plus anormal';
-COMMENT ON COLUMN alerte.acquitte_par IS 'ID utilisateur qui a acquitté lalerte';
+COMMENT ON COLUMN alerte.acquitte_par_id IS 'ID utilisateur qui a acquitté lalerte';
 
 -- ============================================================
 -- TABLE : notification
@@ -180,7 +181,8 @@ CREATE TABLE notification (
     destinataire VARCHAR(255) NOT NULL,
     contenu     TEXT        NOT NULL,
     envoye      BOOLEAN     NOT NULL DEFAULT FALSE,
-    envoye_le   TIMESTAMP   NULL
+    envoye_le   TIMESTAMP   NULL,
+    erreur VARCHAR(500) NULL
 );
 
 COMMENT ON TABLE notification IS 'Notifications envoyées via Telegram ou Email';
@@ -205,6 +207,15 @@ ALTER TABLE rapport
 ADD COLUMN type_generation type_generation_enum NOT NULL DEFAULT 'MANUEL';
 
 COMMENT ON TABLE rapport IS 'Rapports générés en PDF, Excel ou CSV';
+
+-- Modification dans la table notification
+ALTER TABLE notification
+ADD COLUMN utilisateur_id INTEGER NULL REFERENCES utilisateur(id) ON DELETE SET NULL;
+
+COMMENT ON COLUMN notification.utilisateur_id IS
+'Utilisateur destinataire identifié dans le système (optionnel).
+ NULL si destinataire externe non enregistré (canal Telegram groupe, email externe).
+ Matérialise la relation UML Notification ——destinée à——> Utilisateur.';
 
 -- ============================================================
 -- INDEX pour optimiser les requêtes fréquentes
@@ -241,6 +252,10 @@ CREATE INDEX idx_rapport_utilisateur
 -- Equipement par statut
 CREATE INDEX idx_equipement_statut 
     ON equipement(statut);
+
+-- Filtrer notifications par utilisateur
+CREATE INDEX idx_notification_utilisateur
+    ON notification(utilisateur_id);
 
 -- ============================================================
 -- FIN DU SCHEMA

@@ -1,0 +1,190 @@
+version: "3.9"
+
+networks:
+  supervision_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  influxdb_data:
+  prometheus_data:
+  zabbix_data:
+
+services:
+
+  # ─────────────────────────────────────────────────────
+  # COUCHE PHYSIQUE / COLLECTE
+  # ─────────────────────────────────────────────────────
+
+  # PostgreSQL — port 5433 (comme dans ton .env)
+  postgres:
+    image: postgres:15-alpine
+    container_name: supervision_postgres
+    restart: always
+    environment:
+      POSTGRES_DB:       supervision_db
+      POSTGRES_USER:     supervision_user
+      POSTGRES_PASSWORD: supervision_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    ports:
+      - "5433:5432"          # hôte:5433 → conteneur:5432
+    networks:
+      - supervision_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supervision_user -d supervision_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # InfluxDB — métriques séries temporelles
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: supervision_influxdb
+    restart: always
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE:         setup
+      DOCKER_INFLUXDB_INIT_USERNAME:     admin
+      DOCKER_INFLUXDB_INIT_PASSWORD:     supervision_pass
+      DOCKER_INFLUXDB_INIT_ORG:          supervision
+      DOCKER_INFLUXDB_INIT_BUCKET:       metriques
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_TOKEN}
+      DOCKER_INFLUXDB_INIT_RETENTION:    30d
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    ports:
+      - "8086:8086"
+    networks:
+      - supervision_net
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus — collecte métriques toutes les 30s
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: supervision_prometheus
+    restart: always
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    networks:
+      - supervision_net
+
+  # Node Exporter — métriques CPU/RAM/réseau du serveur hôte
+  node_exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: supervision_node_exporter
+    restart: always
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+    ports:
+      - "9100:9100"
+    networks:
+      - supervision_net
+
+  # Zabbix Server — supervision SNMP avancée
+  zabbix_server:
+    image: zabbix/zabbix-server-pgsql:alpine-6.4-latest
+    container_name: supervision_zabbix_server
+    restart: always
+    environment:
+      DB_SERVER_HOST:    postgres
+      DB_SERVER_PORT:    5432          # interne Docker (pas 5433)
+      POSTGRES_DB:       supervision_db
+      POSTGRES_USER:     supervision_user
+      POSTGRES_PASSWORD: supervision_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "10051:10051"
+    networks:
+      - supervision_net
+    volumes:
+      - zabbix_data:/var/lib/zabbix
+
+  # Zabbix Web UI
+  zabbix_web:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-6.4-latest
+    container_name: supervision_zabbix_web
+    restart: always
+    environment:
+      ZBX_SERVER_HOST:   zabbix_server
+      DB_SERVER_HOST:    postgres
+      DB_SERVER_PORT:    5432
+      POSTGRES_DB:       supervision_db
+      POSTGRES_USER:     supervision_user
+      POSTGRES_PASSWORD: supervision_pass
+      PHP_TZ:            Africa/Casablanca
+    depends_on:
+      - zabbix_server
+    ports:
+      - "8080:8080"
+    networks:
+      - supervision_net
+
+  # ─────────────────────────────────────────────────────
+  # COUCHE TRAITEMENT
+  # ─────────────────────────────────────────────────────
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: supervision_backend
+    restart: always
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - supervision_net
+    volumes:
+      - ./rapports:/app/rapports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────
+  # COUCHE PRÉSENTATION
+  # ─────────────────────────────────────────────────────
+
+  # Frontend React.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: supervision_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - supervision_net

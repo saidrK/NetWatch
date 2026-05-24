@@ -1,0 +1,49 @@
+global:
+  scrape_interval:     30s   # BF03 : collecte toutes les 30 secondes
+  evaluation_interval: 30s
+  scrape_timeout:      10s
+
+scrape_configs:
+
+  # ── Prometheus lui-même ───────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Node Exporter — métriques système hôte ───────────
+  - job_name: "node_exporter"
+    static_configs:
+      - targets: ["node_exporter:9100"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "serveur_hote"
+
+  # ── Backend FastAPI ───────────────────────────────────
+  - job_name: "backend_fastapi"
+    static_configs:
+      - targets: ["backend:8000"]
+    metrics_path: "/metrics"
+
+  # ── Équipements réseau (activé Sprint 2 après Nmap) ──
+  # - job_name: "equipements_reseau"
+  #   file_sd_configs:
+  #     - files:
+  #       - /etc/prometheus/targets/*.json
+  #       refresh_interval: 5m
+
+  # ── SNMP Exporter (activé Sprint 2) ──────────────────
+  # - job_name: "snmp"
+  #   static_configs:
+  #     - targets:
+  #       - 192.168.1.1
+  #   metrics_path: /snmp
+  #   params:
+  #     module: [if_mib]
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: __param_target
+  #     - source_labels: [__param_target]
+  #       target_label: instance
+  #     - target_label: __address__
+  #       replacement: snmp_exporter:9116
