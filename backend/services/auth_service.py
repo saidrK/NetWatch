@@ -103,7 +103,7 @@ async def _enregistrer_connexion(
         utilisateur_id=utilisateur_id,
         statut=statut,
         adresse_ip=adresse_ip,
-        user_agent=user_agent,
+
         date_connexion=datetime.utcnow(),
     )
     db.add(historique)
