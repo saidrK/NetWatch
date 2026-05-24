@@ -119,6 +119,7 @@ CREATE TABLE equipement (
     hostname    VARCHAR(255)    NULL,
     type        type_equipement_enum     NOT NULL DEFAULT 'INCONNU',
     statut      statut_enum     NOT NULL DEFAULT 'INCONNU',
+    os_detecte  VARCHAR(255)    NULL,
     dernier_vu  TIMESTAMP       NULL,
     created_at  TIMESTAMP       NOT NULL DEFAULT NOW(),
     seuil_cpu_warning FLOAT     NOT NULL DEFAULT 70.0,
