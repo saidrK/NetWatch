@@ -36,7 +36,7 @@ class Equipement(Base):
     seuil_ram_critique  = Column(Float, default=90.0, nullable=False)
     seuil_bp_warning    = Column(Float, default=800.0, nullable=False)
     seuil_bp_critique   = Column(Float, default=950.0, nullable=False)
-    status              = Column(SAEnum(StatutEquipement), default=StatutEquipement.INCONNU, nullable=False)
+    statut              = Column(SAEnum(StatutEquipement), default=StatutEquipement.INCONNU, nullable=False)
     os_detecte          = Column(String(255), nullable=True)
 
     ports   = relationship("Port",  back_populates="equipement", cascade="all, delete-orphan")
