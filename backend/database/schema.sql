@@ -47,7 +47,7 @@ CREATE TYPE canal_enum AS ENUM (
 );
 
 CREATE TYPE type_equipement_enum AS ENUM (
-    'SERVEUR', 'ROUTEUR', 'SWITCH', 'PC', 'INCONNU'
+    'SERVEUR', 'ROUTEUR', 'SWITCH', 'PC', 'IMPRIMANTE', 'INCONNU'
 );
 
 CREATE TYPE format_rapport_enum AS ENUM (
@@ -142,6 +142,7 @@ CREATE TABLE port (
     numero          INTEGER     NOT NULL CHECK (numero BETWEEN 1 AND 65535),
     protocole       VARCHAR(5)  NOT NULL CHECK (protocole IN ('TCP', 'UDP')),
     service         VARCHAR(100) NULL,
+    service_version         VARCHAR(255) NULL,
     ouvert          BOOLEAN     NOT NULL DEFAULT TRUE,
     UNIQUE (equipement_id, numero, protocole)
 );
@@ -162,13 +163,13 @@ CREATE TABLE alerte (
     valeur_bp        FLOAT               NOT NULL DEFAULT 0.0,
     timestamp       TIMESTAMP           NOT NULL DEFAULT NOW(),
     acquittee       BOOLEAN             NOT NULL DEFAULT FALSE,
-    acquitte_par    INTEGER             NULL REFERENCES utilisateur(id) ON DELETE SET NULL,
+    acquitte_par_id    INTEGER          NULL REFERENCES utilisateur(id) ON DELETE SET NULL,
     acquitte_le     TIMESTAMP           NULL
 );
 
 COMMENT ON TABLE alerte IS 'Incidents détectés par Isolation Forest';
 COMMENT ON COLUMN alerte.score_anomalie IS 'Score calculé par Isolation Forest — plus élevé = plus anormal';
-COMMENT ON COLUMN alerte.acquitte_par IS 'ID utilisateur qui a acquitté lalerte';
+COMMENT ON COLUMN alerte.acquitte_par_id IS 'ID utilisateur qui a acquitté lalerte';
 
 -- ============================================================
 -- TABLE : notification
@@ -180,7 +181,8 @@ CREATE TABLE notification (
     destinataire VARCHAR(255) NOT NULL,
     contenu     TEXT        NOT NULL,
     envoye      BOOLEAN     NOT NULL DEFAULT FALSE,
-    envoye_le   TIMESTAMP   NULL
+    envoye_le   TIMESTAMP   NULL,
+    erreur VARCHAR(500) NULL
 );
 
 COMMENT ON TABLE notification IS 'Notifications envoyées via Telegram ou Email';
