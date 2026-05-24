@@ -4,7 +4,7 @@ Scénarios : liste, détail, accès non autorisé, équipement inexistant
 """
 import pytest
 from httpx import AsyncClient, ASGITransport
-from backend.main import app
+from main import app
 
 
 BASE = "/api/v1/equipements"

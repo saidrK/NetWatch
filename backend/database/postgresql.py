@@ -7,7 +7,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import event
 import logging
 
-from backend.config import get_settings
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -58,7 +58,7 @@ async def get_db() -> AsyncSession:
 async def init_db():
     """Crée toutes les tables en base si elles n'existent pas."""
     # Import ici pour éviter les imports circulaires
-    from backend.models import (  
+    from models import (  
         utilisateur, equipement,
         alerte, notification, rapport, historique_connexion
     )

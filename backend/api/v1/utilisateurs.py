@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
 
 from database.postgresql import get_db
-from models.utilisateur import Utilisateur, Admin, Technicien, RoleUtilisateur
+from models.utilisateur import Utilisateur, Administrateur, Technicien, RoleUtilisateur
 from services.auth_service import (
     hasher_mot_de_passe, get_utilisateur_courant, verifier_role
 )
@@ -112,7 +112,7 @@ async def creer_utilisateur(
 
     # Créer selon le rôle
     if body.role == RoleUtilisateur.ADMINISTRATEUR:
-        user = Admin(
+        user = Administrateur(
             nom=body.nom,
             email=body.email,
             mot_de_passe_hash=hasher_mot_de_passe(body.mot_de_passe),

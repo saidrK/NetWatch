@@ -35,7 +35,7 @@ def _deviner_type(hostname: str, os_detecte: str, ports: list[int]) -> TypeEquip
         return TypeEquipement.SERVEUR
     if any(k in o for k in ["windows 10", "windows 11", "macos"]):
         return TypeEquipement.PC
-    return TypeEquipement.AUTRE
+    return TypeEquipement.INCONNU
 
 
 # ─── Scan principal ───────────────────────────────────────
@@ -81,9 +81,9 @@ async def lancer_scan(
                     if details["state"] == "open":
                         ports_list.append({
                             "numero":    numero,
-                            "protocole": proto,
+                            "protocole": proto.upper(),
                             "service":   details.get("name"),
-                            "version":   f"{details.get('product','')} {details.get('version','')}".strip() or None,
+                            "service_version":   f"{details.get('product','')} {details.get('version','')}".strip() or None,
                         })
 
             type_eq = _deviner_type(hostname, os_detecte, [p["numero"] for p in ports_list])
@@ -125,7 +125,7 @@ async def lancer_scan(
                     numero=p["numero"],
                     protocole=p["protocole"],
                     service=p["service"],
-                    version=p["version"],
+                    service_version=p["version"],
                     ouvert=True,
                 ))
 

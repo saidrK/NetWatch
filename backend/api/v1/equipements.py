@@ -28,7 +28,7 @@ class PortResponse(BaseModel):
     numero:    int
     protocole: str
     service:   Optional[str]
-    version:   Optional[str]
+    service_version:   Optional[str] = None
     ouvert:    bool
 
     class Config:
@@ -42,7 +42,8 @@ class EquipementResponse(BaseModel):
     hostname:    Optional[str]
     type:        str
     statut:      str
-    os_detecte:  Optional[str]
+    statut:      Optional[str] = None
+    os_detecte:  Optional[str] = None
     dernier_vu:  Optional[datetime]
     created_at:  datetime
 
