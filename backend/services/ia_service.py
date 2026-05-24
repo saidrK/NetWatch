@@ -157,9 +157,9 @@ class IAService:
             equipement_id=metrique.equipement_id,
             niveau=niveau,
             score_anomalie=score,
-            seuil_cpu=metrique.cpu_usage,
-            seuil_ram=metrique.ram_usage,
-            seuil_bp=metrique.bp_entrant + metrique.bp_sortant,
+            valeur_cpu=metrique.cpu_usage,
+            valeur_ram=metrique.ram_usage,
+            valeur_bp=metrique.bp_entrant + metrique.bp_sortant,
             message=(
                 f"Anomalie {niveau.value} détectée sur {eq.hostname or eq.adresse_ip} — "
                 f"CPU: {metrique.cpu_usage:.1f}% | RAM: {metrique.ram_usage:.1f}% | "

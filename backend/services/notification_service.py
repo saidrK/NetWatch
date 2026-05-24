@@ -74,7 +74,7 @@ class NotificationService:
             f"{emoji} <b>Alerte {alerte.niveau.value}</b>\n"
             f"📍 {alerte.message}\n"
             f"🕐 {alerte.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"📊 CPU: {alerte.seuil_cpu:.1f}% | RAM: {alerte.seuil_ram:.1f}%"
+            f"📊 CPU: {alerte.valeur_cpu:.1f}% | RAM: {alerte.valeur_ram:.1f}%"
         )
 
     # Pipeline principal
