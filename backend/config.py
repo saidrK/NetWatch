@@ -2,9 +2,14 @@
 Configuration centrale de la plateforme
 Lit les variables du .env et les expose à toute l'application
 """
+from pathlib import Path
+from functools import lru_cache
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
-from functools import lru_cache
+
+_THIS_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _THIS_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -50,7 +55,10 @@ class Settings(BaseSettings):
         return v
 
     class Config:
-        env_file = ".env"
+        # Supporte les deux modes de lancement:
+        # - depuis la racine du projet
+        # - depuis le dossier backend/
+        env_file = (_PROJECT_ROOT / ".env", _THIS_DIR / ".env")
         env_file_encoding = "utf-8"
         case_sensitive = False
         extra = "ignore"   # ignore les variables non déclarées

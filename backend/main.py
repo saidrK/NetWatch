@@ -60,7 +60,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",    # Frontend React (dev)
+        "http://localhost:5173",    # Frontend React (dev)
         "http://frontend:80",       # Frontend React (Docker)
     ],
     allow_credentials=True,
