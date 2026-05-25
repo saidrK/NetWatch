@@ -4,7 +4,11 @@
  */
 import axios from 'axios'
 
-const API_ROOT = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '')
+/** Évite /api/v1/v1 si .env contient déjà /api/v1 */
+function getApiBaseUrl() {
+  const raw = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '')
+  return raw.endsWith('/v1') ? raw : `${raw}/v1`
+}
 
 export const STORAGE_KEYS = {
   token: 'token',
@@ -12,7 +16,7 @@ export const STORAGE_KEYS = {
 }
 
 const api = axios.create({
-  baseURL: `${API_ROOT}/v1`,
+  baseURL: getApiBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 })

@@ -17,8 +17,11 @@ import {
 } from '@/components/ui/card'
 
 function getErrorMessage(error) {
+  if (!error.response) {
+    return 'Serveur injoignable. Lancez le backend (port 8000) et vérifiez npm run dev.'
+  }
   const detail = error.response?.data?.detail
-  if (!detail) return 'Erreur de connexion'
+  if (!detail) return `Erreur ${error.response.status}`
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) {
     return detail.map((item) => item.msg ?? item).join(', ')
@@ -132,7 +135,7 @@ export default function Login() {
             </form>
 
             <p className="mt-6 text-center font-mono text-xs text-muted-foreground">
-              admin@supervision.local · Admin2026!
+              admin@supervision.local · Admin@1234
             </p>
           </CardContent>
         </Card>
