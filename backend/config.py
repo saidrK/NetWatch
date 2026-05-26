@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Prometheus
     prometheus_url: str = "http://localhost:9090"
 
+    # IA (Isolation Forest)
+    ia_contamination: float = 0.05
+
     # Telegram 
     telegram_token: str   = ""
     telegram_chat_id: str = ""

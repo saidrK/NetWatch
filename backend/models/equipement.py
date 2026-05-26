@@ -2,7 +2,7 @@
 import enum
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Enum as SAEnum, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 from database.postgresql import Base
 
 
@@ -36,7 +36,8 @@ class Equipement(Base):
     seuil_ram_critique  = Column(Float, default=90.0, nullable=False)
     seuil_bp_warning    = Column(Float, default=800.0, nullable=False)
     seuil_bp_critique   = Column(Float, default=950.0, nullable=False)
-    status              = Column(SAEnum(StatutEquipement), default=StatutEquipement.INCONNU, nullable=False)
+    statut              = Column(SAEnum(StatutEquipement), default=StatutEquipement.INCONNU, nullable=False)
+    status              = synonym("statut")
     os_detecte          = Column(String(255), nullable=True)
 
     ports   = relationship("Port",  back_populates="equipement", cascade="all, delete-orphan")

@@ -94,6 +94,9 @@ async def _construire_payload() -> dict:
             metrique = await influx.derniere(eq.id)
             niveau   = "INCONNU"
             metrics  = {}
+            # Compatibilité ORM: certains modules exposent encore "statut",
+            # alors que la colonne SQLAlchemy est "status".
+            statut_eq = getattr(eq, "statut", None) or getattr(eq, "status", None)
 
             if metrique:
                 niv, _ = ia.analyser(metrique)
@@ -111,7 +114,10 @@ async def _construire_payload() -> dict:
                 "adresse_ip": eq.adresse_ip,
                 "hostname":   eq.hostname,
                 "type":       eq.type.value if hasattr(eq.type, "value") else str(eq.type),
-                "statut":     eq.statut.value if hasattr(eq.statut, "value") else str(eq.statut),
+                "statut":     (
+                    statut_eq.value if hasattr(statut_eq, "value")
+                    else str(statut_eq or "INCONNU")
+                ),
                 "niveau_ia":  niveau,
                 "metriques":  metrics,
                 "dernier_vu": eq.dernier_vu,
@@ -136,8 +142,18 @@ async def _construire_payload() -> dict:
 
         # Compteurs globaux
         total        = len(equipements)
-        en_ligne     = sum(1 for e in equipements if e.statut == StatutEquipement.EN_LIGNE)
-        hors_ligne   = sum(1 for e in equipements if e.statut == StatutEquipement.HORS_LIGNE)
+        en_ligne     = sum(
+            1
+            for e in equipements
+            if (getattr(e, "statut", None) or getattr(e, "status", None))
+            == StatutEquipement.EN_LIGNE
+        )
+        hors_ligne   = sum(
+            1
+            for e in equipements
+            if (getattr(e, "statut", None) or getattr(e, "status", None))
+            == StatutEquipement.HORS_LIGNE
+        )
         nb_critiques = sum(1 for a in alertes if a.niveau == NiveauAlerte.CRITIQUE)
         nb_warnings  = sum(1 for a in alertes if a.niveau == NiveauAlerte.WARNING)
 
