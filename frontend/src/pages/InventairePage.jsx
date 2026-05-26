@@ -1,17 +1,19 @@
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+/**
+ * InventairePage — Page inventaire des équipements (BF02)
+ * Affiche la liste filtrable des équipements réseau
+ */
+import ListeEquipements from '@/components/Inventaire/ListeEquipements'
 
 export default function InventairePage() {
   return (
-    <Card className="border-dashed">
-      <CardHeader>
-        <CardTitle>Inventaire réseau</CardTitle>
-        <CardDescription>ListeEquipements.jsx · BF02</CardDescription>
-      </CardHeader>
-    </Card>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Inventaire réseau</h2>
+        <p className="text-muted-foreground">
+          Liste et détail des équipements réseau (BF02)
+        </p>
+      </div>
+      <ListeEquipements />
+    </div>
   )
 }

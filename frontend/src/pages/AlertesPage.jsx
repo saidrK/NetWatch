@@ -1,17 +1,19 @@
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+/**
+ * AlertesPage — Page de gestion des alertes (BF05)
+ * Affiche la liste des alertes avec filtres et acquittement
+ */
+import ListeAlertes from '@/components/Alertes/ListeAlertes'
 
 export default function AlertesPage() {
   return (
-    <Card className="border-dashed">
-      <CardHeader>
-        <CardTitle>Alertes</CardTitle>
-        <CardDescription>ListeAlertes.jsx · BF05</CardDescription>
-      </CardHeader>
-    </Card>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Alertes</h2>
+        <p className="text-muted-foreground">
+          Gestion et acquittement des alertes (BF05)
+        </p>
+      </div>
+      <ListeAlertes />
+    </div>
   )
 }
