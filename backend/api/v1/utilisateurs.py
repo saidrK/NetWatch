@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from database.postgresql import get_db
 from models.utilisateur import Utilisateur, Administrateur, Technicien, RoleUtilisateur
@@ -28,14 +28,14 @@ oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 # Schémas Pydantic
 class UtilisateurCreate(BaseModel):
     nom:          str
-    email:        EmailStr
+    email:        str
     mot_de_passe: str
     role:         RoleUtilisateur
 
 
 class UtilisateurUpdate(BaseModel):
     nom:          Optional[str]   = None
-    email:        Optional[EmailStr] = None
+    email:        Optional[str]   = None
     mot_de_passe: Optional[str]   = None
     actif:        Optional[bool]  = None
 
