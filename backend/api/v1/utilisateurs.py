@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
@@ -37,6 +37,7 @@ class UtilisateurUpdate(BaseModel):
     nom:          Optional[str]   = None
     email:        Optional[str]   = None
     mot_de_passe: Optional[str]   = None
+    role:         Optional[RoleUtilisateur] = None
     actif:        Optional[bool]  = None
 
 
@@ -175,6 +176,17 @@ async def modifier_utilisateur(
     if body.email:        user.email = body.email
     if body.mot_de_passe: user.mot_de_passe_hash = hasher_mot_de_passe(body.mot_de_passe)
     if body.actif is not None: user.actif = body.actif
+    
+    # Le rôle est la colonne polymorphique (polymorphic_on). Modifier cette colonne
+    # sur une instance existante (ex: changer un objet Technicien en Administrateur)
+    # est complexe en ORM. On utilise un UPDATE brut pour garantir la sécurité.
+    if body.role and body.role != user.role:
+        await db.execute(
+            update(Utilisateur)
+            .where(Utilisateur.id == user_id)
+            .values(role=body.role)
+        )
+        user.role = body.role
 
     await db.flush()
     await db.refresh(user)
