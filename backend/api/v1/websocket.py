@@ -119,30 +119,52 @@ async def _construire_payload() -> dict:
             # Appel InfluxDB potentiellement bloquant
             metrique = await influx.derniere(eq.id)
             niveau   = "INCONNU"
+            score    = 0.0
             metrics  = {}
             
+            cpu = 0.0
+            ram = 0.0
+            bpe = 0.0
+            bps = 0.0
+            
             statut_eq = getattr(eq, "statut", None) or getattr(eq, "status", None)
+            statut_val = statut_eq.value if hasattr(statut_eq, "value") else str(statut_eq or "INCONNU")
 
             if metrique:
-                niv, _ = ia.analyser(metrique)
+                niv, sc = ia.analyser(metrique)
                 niveau = niv.value
+                score  = float(sc)
+                cpu = float(metrique.cpu_usage)
+                ram = float(metrique.ram_usage)
+                bpe = float(metrique.bp_entrant)
+                bps = float(metrique.bp_sortant)
+                
                 metrics = {
-                    "cpu_usage":  metrique.cpu_usage,
-                    "ram_usage":  metrique.ram_usage,
-                    "bp_entrant": metrique.bp_entrant,
-                    "bp_sortant": metrique.bp_sortant,
+                    "cpu_usage":  cpu,
+                    "ram_usage":  ram,
+                    "bp_entrant": bpe,
+                    "bp_sortant": bps,
                     "disponible": metrique.disponible,
                 }
 
             equipements_data.append({
                 "id":         eq.id,
                 "adresse_ip": eq.adresse_ip,
+                "ip":         eq.adresse_ip,  # Pour v2
                 "hostname":   eq.hostname,
                 "type":       eq.type.value if hasattr(eq.type, "value") else str(eq.type),
-                "statut":     statut_eq.value if hasattr(statut_eq, "value") else str(statut_eq or "INCONNU"),
+                "statut":     statut_val,
                 "niveau_ia":  niveau,
                 "metriques":  metrics,
                 "dernier_vu": eq.dernier_vu,
+                # Champs flat attendus par Dashboard v2
+                "cpu_percent":   cpu,
+                "ram_percent":   ram,
+                "bytes_sent":    bps,
+                "bytes_recv":    bpe,
+                "latency_ms":    0.0,
+                "packet_loss":   0.0,
+                "anomaly_score": score,
             })
 
         result_alertes = await db.execute(
@@ -171,8 +193,11 @@ async def _construire_payload() -> dict:
         nb_warnings  = sum(1 for a in alertes if a.niveau == NiveauAlerte.WARNING)
 
         return {
-            "type":       "dashboard_update",
-            "timestamp":  datetime.utcnow().isoformat(),
+            "type":            "dashboard_update",
+            "timestamp":       datetime.utcnow().isoformat(),
+            "alertes_actives": nb_critiques + nb_warnings,
+            "nodes":           equipements_data,
+            "equipements":     equipements_data,
             "resume": {
                 "total_equipements": total,
                 "en_ligne":          en_ligne,
@@ -180,8 +205,7 @@ async def _construire_payload() -> dict:
                 "alertes_critiques": nb_critiques,
                 "alertes_warnings":  nb_warnings,
             },
-            "equipements": equipements_data,
-            "alertes":     alertes_data,
+            "alertes": alertes_data,
         }
 
 
