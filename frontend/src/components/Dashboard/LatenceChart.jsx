@@ -31,7 +31,7 @@ export default function LatenceChart({ history = [], loading = false }) {
         <span className="text-xs font-mono uppercase tracking-widest text-gray-400 font-bold">
           LATENCE &amp; PERTE DE PAQUETS
         </span>
-        <div className="flex gap-3 text-[10px] font-mono">
+        <div className="flex gap-4 text-xs font-bold font-mono">
           <span style={{ color: CYAN }}>■ Latence (ms)</span>
           <span style={{ color: ORANGE }}>■ Perte (%)</span>
         </div>
@@ -50,20 +50,20 @@ export default function LatenceChart({ history = [], loading = false }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#222" strokeOpacity={0.5} />
               <XAxis
                 dataKey="time"
-                tick={{ fill: '#555', fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                tick={{ fill: '#555', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                 tickLine={false} axisLine={{ stroke: '#222' }}
                 interval="preserveStartEnd"
               />
               <YAxis
                 yAxisId="left"
-                tick={{ fill: '#555', fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                tick={{ fill: '#555', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                 tickLine={false} axisLine={false}
                 width={36} tickFormatter={v => `${v}ms`}
               />
               <YAxis
                 yAxisId="right" orientation="right"
                 domain={[0, 100]}
-                tick={{ fill: '#555', fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                tick={{ fill: '#555', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                 tickLine={false} axisLine={false}
                 width={28} tickFormatter={v => `${v}%`}
               />

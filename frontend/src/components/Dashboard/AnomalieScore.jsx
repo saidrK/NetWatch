@@ -88,19 +88,19 @@ export default function AnomalieScore({ history = [], loading = false, currentSc
               <CartesianGrid strokeDasharray="3 3" stroke="#222" strokeOpacity={0.5} />
               <XAxis
                 dataKey="time"
-                tick={{ fill: '#555', fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                tick={{ fill: '#555', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                 tickLine={false} axisLine={{ stroke: '#222' }}
                 interval="preserveStartEnd"
               />
               <YAxis
                 domain={[-1, 1]}
-                tick={{ fill: '#555', fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                tick={{ fill: '#555', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                 tickLine={false} axisLine={false} width={30}
               />
               <Tooltip content={<CustomTooltip />} />
               <ReferenceLine
                 y={THRESHOLD} stroke={RED} strokeDasharray="4 4" strokeOpacity={0.7}
-                label={{ value: 'SEUIL', position: 'insideTopRight', fill: RED, fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                label={{ value: 'SEUIL', position: 'insideTopRight', fill: RED, fontSize: 11, fontFamily: 'JetBrains Mono' }}
               />
               <ReferenceLine y={0} stroke="#333" strokeDasharray="2 2" strokeOpacity={0.5} />
               <Area
@@ -115,7 +115,7 @@ export default function AnomalieScore({ history = [], loading = false, currentSc
         )}
       </div>
 
-      <div className="flex gap-4 mt-2 text-[10px] font-mono text-gray-600">
+      <div className="flex gap-4 mt-2 text-xs font-bold font-mono text-gray-600">
         <span style={{ color: GREEN }}>■ NORMAL &lt;0</span>
         <span style={{ color: YELLOW }}>■ SUSPECT 0–0.5</span>
         <span style={{ color: RED }}>■ ANOMALIE &gt;0.5</span>

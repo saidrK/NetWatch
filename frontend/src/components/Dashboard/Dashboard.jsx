@@ -395,12 +395,12 @@ export default function Dashboard() {
           </div>
 
           {/* Footer IA */}
-          <div className="border-t border-[#222] pt-3 flex items-center justify-between font-mono" style={{ fontSize: 11 }}>
-            <span className="flex items-center gap-2" style={{ color: YELLOW }}>
+          <div className="border-t border-[#222] pt-3 flex items-center justify-between font-mono" style={{ fontSize: 13 }}>
+            <span className="flex items-center gap-2 font-bold" style={{ color: YELLOW }}>
               <Activity style={{ width: 14, height: 14 }} />
               ISOLATION FOREST: ACTIF
             </span>
-            <span style={{ color: '#4b5563' }}>
+            <span className="font-bold" style={{ color: '#4b5563' }}>
               Score moy.: {current ? current.anomaly_score.toFixed(3) : '—'}
             </span>
           </div>

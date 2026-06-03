@@ -43,7 +43,7 @@ export default function BandePassanteChart({ history = [], loading = false }) {
         <span className="text-xs font-mono uppercase tracking-widest text-gray-400 font-bold">
           BANDE PASSANTE RÉSEAU
         </span>
-        <div className="flex gap-3 text-[10px] font-mono">
+        <div className="flex gap-4 text-xs font-mono font-bold">
           <span style={{ color: GREEN }}>■ IN</span>
           <span style={{ color: CYAN }}>■ OUT</span>
         </div>
@@ -72,12 +72,12 @@ export default function BandePassanteChart({ history = [], loading = false }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#222" strokeOpacity={0.5} />
               <XAxis
                 dataKey="time"
-                tick={{ fill: '#555', fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                tick={{ fill: '#555', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                 tickLine={false} axisLine={{ stroke: '#222' }}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fill: '#555', fontSize: 9, fontFamily: 'JetBrains Mono' }}
+                tick={{ fill: '#555', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                 tickLine={false} axisLine={false}
                 tickFormatter={v => `${v}M`} width={36}
               />
