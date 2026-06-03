@@ -3,6 +3,7 @@
  * Thème projet : bg #0D0D0D, border #222, #00FFD1/#FFD700/#FF4E00
  */
 import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from 'recharts'
+import { CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 
 const GREEN  = '#00FFD1'
 const YELLOW = '#FFD700'
@@ -60,10 +61,12 @@ export default function NodesActifsGauge({ nodesUp = null, nodesTotal = 0, loadi
         )}
       </div>
 
-      <div className="mt-2 text-xs font-bold font-mono text-center" style={{ color }}>
+      <div className="mt-2 text-xs font-bold font-mono text-center flex items-center justify-center gap-1.5" style={{ color }}>
         {percent !== null
-          ? percent === 100 ? '● TOUS OPÉRATIONNELS' : `● ${100 - percent}% EN ERREUR`
-          : '● EN ATTENTE'}
+          ? percent === 100 
+             ? <><CheckCircle2 size={14} className="flex-shrink-0" /> TOUS OPÉRATIONNELS</> 
+             : <><AlertTriangle size={14} className="flex-shrink-0" /> {100 - percent}% EN ERREUR</>
+          : <><Clock size={14} className="flex-shrink-0" /> EN ATTENTE</>}
       </div>
     </div>
   )

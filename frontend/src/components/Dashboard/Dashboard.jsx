@@ -19,7 +19,7 @@ import {
   Tooltip, ResponsiveContainer
 } from 'recharts'
 
-import { Activity, AlertTriangle, Network, Server, Cpu, HardDrive } from 'lucide-react'
+import { Activity, AlertTriangle, Network, Server, Cpu, HardDrive, CheckCircle2 } from 'lucide-react'
 
 const CYAN   = '#00FFD1'
 const RED    = '#FF4E00'
@@ -55,6 +55,18 @@ function aggregateNodes(nodes) {
 // ── KPI Card ─────────────────────────────────────────────────
 function KpiCard({ label, value, unit, icon: Icon, accent = CYAN, state = 'ok', sub }) {
   const border = state === 'critical' ? RED : state === 'warning' ? YELLOW : accent
+  
+  const renderSub = (text) => {
+    if (!text) return null
+    if (text.startsWith('⚠')) {
+      return <><AlertTriangle size={14} className="flex-shrink-0" /> <span>{text.substring(2)}</span></>
+    }
+    if (text.startsWith('●')) {
+      return <><CheckCircle2 size={14} className="flex-shrink-0" /> <span>{text.substring(2)}</span></>
+    }
+    return text
+  }
+
   return (
     <div
       className="bg-[#0D0D0D] border p-6 flex flex-col gap-3 hover:border-[#00FFD1] transition-colors duration-150"
@@ -70,7 +82,11 @@ function KpiCard({ label, value, unit, icon: Icon, accent = CYAN, state = 'ok', 
         </span>
         {unit && <span className="font-mono" style={{ color: '#4b5563', fontSize: 15, marginBottom: 4 }}>{unit}</span>}
       </div>
-      {sub && <span className="font-mono font-bold" style={{ color: '#4b5563', fontSize: 13 }}>{sub}</span>}
+      {sub && (
+        <span className="font-mono font-bold flex items-center gap-1.5" style={{ color: '#4b5563', fontSize: 13 }}>
+          {renderSub(sub)}
+        </span>
+      )}
     </div>
   )
 }
