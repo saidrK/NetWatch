@@ -27,7 +27,7 @@ class Equipement(Base):
     adresse_ip  = Column(String(45), unique=True, nullable=False, index=True)
     adresse_mac = Column(String(17), nullable=True)
     hostname    = Column(String(255), nullable=True)
-    type        = Column(SAEnum(TypeEquipement), default=TypeEquipement.INCONNU, nullable=False)
+    type        = Column(SAEnum(TypeEquipement, name="type_equipement_enum"), default=TypeEquipement.INCONNU, nullable=False)
     dernier_vu  = Column(DateTime, nullable=True)
     created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
     seuil_cpu_warning   = Column(Float, default=70.0, nullable=False)
@@ -36,7 +36,7 @@ class Equipement(Base):
     seuil_ram_critique  = Column(Float, default=90.0, nullable=False)
     seuil_bp_warning    = Column(Float, default=800.0, nullable=False)
     seuil_bp_critique   = Column(Float, default=950.0, nullable=False)
-    statut              = Column(SAEnum(StatutEquipement), default=StatutEquipement.INCONNU, nullable=False)
+    statut              = Column(SAEnum(StatutEquipement, name="statut_enum"), default=StatutEquipement.INCONNU, nullable=False)
     status              = synonym("statut")
     os_detecte          = Column(String(255), nullable=True)
     
