@@ -57,7 +57,7 @@ async def websocket_dashboard(ws: WebSocket):
     try:
         while True:
             try:
-                # Encapsulation stricte dans un wait_for pour éviter de bloquer l'Event Loop
+                # Construire et envoyer le payload dashboard
                 data = await asyncio.wait_for(_construire_payload(), timeout=TIMEOUT_METRICS)
                 await ws.send_text(json.dumps(data, default=str))
             except asyncio.TimeoutError:
@@ -79,14 +79,30 @@ async def websocket_dashboard(ws: WebSocket):
                 }
                 await ws.send_text(json.dumps(error_payload))
 
-            # Cycle nominal : dormir 30s avant le prochain push
-            await asyncio.sleep(10)
+            # Attendre 10s OU un message entrant du client (ping/pong/disconnect)
+            # Sans recv(), le browser ferme la connexion WebSocket inactive
+            recv_task  = asyncio.ensure_future(ws.receive_text())
+            sleep_task = asyncio.ensure_future(asyncio.sleep(10))
+            done, pending = await asyncio.wait(
+                [recv_task, sleep_task],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            # Annuler la tâche qui n'a pas fini
+            for t in pending:
+                t.cancel()
+            # Si recv() a terminé en premier, vérifier si c'est une déconnexion
+            if recv_task in done:
+                try:
+                    recv_task.result()  # lève WebSocketDisconnect si client parti
+                except Exception:
+                    break  # client déconnecté → sortir de la boucle
 
     except WebSocketDisconnect:
         manager.disconnect(ws)
     except Exception as e:
         logger.error(f"❌ WebSocket error critique : {e}")
         manager.disconnect(ws)
+
 
 
 async def _construire_payload() -> dict:
