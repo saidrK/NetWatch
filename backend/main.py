@@ -61,10 +61,15 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",    # Frontend React (dev)
-        "http://localhost:5174",    # Frontend React (dev alt)
-        "http://frontend:80",       # Frontend React (Docker)
+        "http://localhost:5173",           # Frontend React (dev local)
+        "http://localhost:5174",           # Frontend React (dev alt)
+        "http://frontend:80",              # Frontend React (Docker)
+        "http://192.168.1.103:5173",       # Frontend Fedora (IP fixe explicite)
+        "http://192.168.1.103:5174",       # Frontend Fedora (IP fixe alt)
     ],
+    # Couvre tout le sous-réseau 192.168.1.0/24 sur les ports Vite (5173/5174)
+    # Utile si l'IP change via DHCP — à désactiver ou restreindre en production
+    allow_origin_regex=r"http://192\.168\.1\.\d{1,3}:(5173|5174)",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
