@@ -1,15 +1,15 @@
 """
-— WebSocket dashboard temps réel
-WS /ws/dashboard -> push métriques toutes les 30s sans rechargement page
+api/v1/websocket.py — WebSocket dashboard temps réel (BLOC 4)
+WS /ws/dashboard -> push métriques toutes les 30s
+Fiabilisation : asyncio.wait_for sur DB/Influx, gestion propre de WebSocketDisconnect
 """
 import asyncio
 import json
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.postgresql import AsyncSessionLocal
 from database.influxdb import InfluxDBService
@@ -20,7 +20,7 @@ from services.ia_service import get_ia_service
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Gestionnaire de connexions WebSocket
+
 class ConnectionManager:
     def __init__(self):
         self.active: list[WebSocket] = []
@@ -31,11 +31,11 @@ class ConnectionManager:
         logger.info(f"✅ WebSocket connecté — {len(self.active)} client(s)")
 
     def disconnect(self, ws: WebSocket):
-        self.active.remove(ws)
-        logger.info(f"🔌 WebSocket déconnecté — {len(self.active)} client(s)")
+        if ws in self.active:
+            self.active.remove(ws)
+            logger.info(f"🔌 WebSocket déconnecté — {len(self.active)} client(s)")
 
     async def broadcast(self, message: dict):
-        """Envoie un message à tous les clients connectés."""
         payload = json.dumps(message, default=str)
         disconnected = []
         for ws in self.active:
@@ -44,58 +44,67 @@ class ConnectionManager:
             except Exception:
                 disconnected.append(ws)
         for ws in disconnected:
-            self.active.remove(ws)
+            self.disconnect(ws)
 
 
 manager = ConnectionManager()
+TIMEOUT_METRICS = 10.0  # Timeout strict pour la récupération des métriques
 
 
-# WS /ws/dashboard
 @router.websocket("/dashboard")
 async def websocket_dashboard(ws: WebSocket):
-    """
-    WebSocket principal du dashboard.
-    Pousse toutes les 30 secondes :
-      - métriques de tous les équipements
-      - alertes non acquittées
-      - statut global du réseau
-    """
     await manager.connect(ws)
     try:
         while True:
-            data = await _construire_payload()
-            await ws.send_text(json.dumps(data, default=str))
-            await asyncio.sleep(30)   # BF03 : toutes les 30 secondes
+            try:
+                # Encapsulation stricte dans un wait_for pour éviter de bloquer l'Event Loop
+                data = await asyncio.wait_for(_construire_payload(), timeout=TIMEOUT_METRICS)
+                await ws.send_text(json.dumps(data, default=str))
+            except asyncio.TimeoutError:
+                logger.error("❌ WS: Timeout lors de la récupération des métriques InfluxDB/PG")
+                error_payload = {
+                    "type": "error",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "code": "metrics_unavailable",
+                    "message": "Les métriques sont temporairement inaccessibles (Timeout).",
+                }
+                await ws.send_text(json.dumps(error_payload))
+            except Exception as e:
+                logger.error(f"❌ WS: Erreur interne: {e}")
+                error_payload = {
+                    "type": "error",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "code": "internal_error",
+                    "message": "Erreur lors de la construction du dashboard.",
+                }
+                await ws.send_text(json.dumps(error_payload))
+
+            # Cycle nominal : dormir 30s avant le prochain push
+            await asyncio.sleep(10)
 
     except WebSocketDisconnect:
         manager.disconnect(ws)
     except Exception as e:
-        logger.error(f"❌ WebSocket error : {e}")
+        logger.error(f"❌ WebSocket error critique : {e}")
         manager.disconnect(ws)
 
 
 async def _construire_payload() -> dict:
-    """
-    Construit le payload JSON envoyé au dashboard :
-    - équipements avec leur dernier statut
-    - alertes WARNING/CRITIQUE non acquittées
-    - compteurs globaux
-    """
     async with AsyncSessionLocal() as db:
         influx = InfluxDBService()
         ia     = get_ia_service()
 
-        # Équipements
-        result = await db.execute(select(Equipement))
+        # Ne sélectionner que les équipements actifs (conformité Soft-Delete BLOC 3)
+        result = await db.execute(select(Equipement).where(Equipement.is_active == True))
         equipements = result.scalars().all()
 
         equipements_data = []
         for eq in equipements:
+            # Appel InfluxDB potentiellement bloquant
             metrique = await influx.derniere(eq.id)
             niveau   = "INCONNU"
             metrics  = {}
-            # Compatibilité ORM: certains modules exposent encore "statut",
-            # alors que la colonne SQLAlchemy est "status".
+            
             statut_eq = getattr(eq, "statut", None) or getattr(eq, "status", None)
 
             if metrique:
@@ -114,16 +123,12 @@ async def _construire_payload() -> dict:
                 "adresse_ip": eq.adresse_ip,
                 "hostname":   eq.hostname,
                 "type":       eq.type.value if hasattr(eq.type, "value") else str(eq.type),
-                "statut":     (
-                    statut_eq.value if hasattr(statut_eq, "value")
-                    else str(statut_eq or "INCONNU")
-                ),
+                "statut":     statut_eq.value if hasattr(statut_eq, "value") else str(statut_eq or "INCONNU"),
                 "niveau_ia":  niveau,
                 "metriques":  metrics,
                 "dernier_vu": eq.dernier_vu,
             })
 
-        # Alertes non acquittées WARNING/CRITIQUE
         result_alertes = await db.execute(
             select(Alerte)
             .where(Alerte.acquittee == False)
@@ -140,20 +145,12 @@ async def _construire_payload() -> dict:
             "timestamp":     a.timestamp,
         } for a in alertes]
 
-        # Compteurs globaux
         total        = len(equipements)
         en_ligne     = sum(
-            1
-            for e in equipements
-            if (getattr(e, "statut", None) or getattr(e, "status", None))
-            == StatutEquipement.EN_LIGNE
+            1 for e in equipements
+            if (getattr(e, "statut", None) or getattr(e, "status", None)) == StatutEquipement.EN_LIGNE
         )
-        hors_ligne   = sum(
-            1
-            for e in equipements
-            if (getattr(e, "statut", None) or getattr(e, "status", None))
-            == StatutEquipement.HORS_LIGNE
-        )
+        hors_ligne   = total - en_ligne
         nb_critiques = sum(1 for a in alertes if a.niveau == NiveauAlerte.CRITIQUE)
         nb_warnings  = sum(1 for a in alertes if a.niveau == NiveauAlerte.WARNING)
 
@@ -172,11 +169,9 @@ async def _construire_payload() -> dict:
         }
 
 
-# Broadcast externe (appelé par ia_service)
 async def notifier_alerte(alerte_data: dict):
-    """Pousse immédiatement une alerte à tous les clients connectés."""
     await manager.broadcast({
-        "type":    "nouvelle_alerte",
-        "alerte":  alerte_data,
+        "type":      "nouvelle_alerte",
+        "alerte":    alerte_data,
         "timestamp": datetime.utcnow().isoformat(),
     })

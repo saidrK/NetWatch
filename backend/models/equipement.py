@@ -39,6 +39,10 @@ class Equipement(Base):
     statut              = Column(SAEnum(StatutEquipement), default=StatutEquipement.INCONNU, nullable=False)
     status              = synonym("statut")
     os_detecte          = Column(String(255), nullable=True)
+    
+    # Ajout pour Soft Delete (BLOC 3)
+    is_active   = Column(Boolean, default=True, nullable=False)
+    deleted_at  = Column(DateTime, nullable=True)
 
     ports   = relationship("Port",  back_populates="equipement", cascade="all, delete-orphan")
     alertes = relationship("Alerte", back_populates="equipement", cascade="all, delete-orphan")

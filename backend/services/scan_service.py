@@ -125,7 +125,7 @@ async def lancer_scan(
                     numero=p["numero"],
                     protocole=p["protocole"],
                     service=p["service"],
-                    service_version=p["version"],
+                    service_version=p["service_version"],
                     ouvert=True,
                 ))
 

@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # Scan réseau
     reseau_plage: str = "192.168.1.0/24"
     
+    # Webhooks (Slack / Discord)
+    webhook_url: str = ""  # URL Slack/Discord Incoming Webhook (optionnel)
+    
     app_name:     str = "Plateforme Supervision Réseau"
     app_version:  str = "1.0.0"
     environment:  str = "development"

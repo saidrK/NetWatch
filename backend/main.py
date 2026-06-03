@@ -2,9 +2,10 @@
 main.py — Point d'entrée de l'API FastAPI
 """
 import logging
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -61,12 +62,29 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",    # Frontend React (dev)
+        "http://localhost:5174",    # Frontend React (dev alt)
         "http://frontend:80",       # Frontend React (Docker)
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+
+# Middleware logging des performances
+@app.middleware("http")
+async def log_performance(request: Request, call_next):
+    """Log le temps de réponse de chaque requête pour monitoring."""
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = round((time.time() - start_time) * 1000, 2)
+    
+    # Ne pas logger les health checks pour éviter le bruit
+    if request.url.path not in ("/health", "/"):
+        log_level = logging.WARNING if duration_ms > 2000 else logging.INFO
+        logger.log(log_level, f"⏱️  {request.method} {request.url.path} → {response.status_code} [{duration_ms}ms]")
+    
+    response.headers["X-Response-Time"] = f"{duration_ms}ms"
+    return response
 
 # Routes API v1 
 # Importés ici pour éviter les imports circulaires au démarrage
@@ -82,14 +100,36 @@ app.include_router(websocket.router,    prefix="/ws",                  tags=["�
 
 
 # Endpoints système 
-@app.get("/health", tags=["⚙️ Système"], summary="Health check")
+@app.get("/health", tags=["⚙️ Système"], summary="Health check complet")
 async def health_check():
-    """Vérifie que l'API est opérationnelle — utilisé par Docker healthcheck."""
+    """
+    Vérifie l'état complet de l'API et de ses dépendances.
+    Retourne des informations sur la connectivité PostgreSQL et l'état général.
+    """
+    from database.postgresql import AsyncSessionLocal as async_session_factory
+    
+    db_status = "unknown"
+    try:
+        async with async_session_factory() as session:
+            from sqlalchemy import text
+            await session.execute(text("SELECT 1"))
+            db_status = "ok"
+    except Exception as e:
+        db_status = f"error: {str(e)[:50]}"
+
+    overall_status = "ok" if db_status == "ok" else "degraded"
+
     return JSONResponse(
+        status_code=200 if overall_status == "ok" else 503,
         content={
-            "status": "ok",
+            "status": overall_status,
             "version": settings.app_version,
             "environment": settings.environment,
+            "services": {
+                "postgresql": db_status,
+                "api": "ok",
+            },
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
     )
 

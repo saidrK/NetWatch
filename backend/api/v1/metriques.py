@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from config import get_settings
 from database.postgresql import get_db
 from database.influxdb import InfluxDBService, Metrique, get_influx
+from models.equipement import StatutEquipement
 from models.utilisateur import Utilisateur
 from services.ia_service import get_ia_service
 from api.v1.utilisateurs import get_current_user
