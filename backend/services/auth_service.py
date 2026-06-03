@@ -10,8 +10,8 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,8 +20,6 @@ from models.utilisateur import Utilisateur, RoleUtilisateur
 from models.historique_connexion import HistoriqueConnexion, StatutConnexion
 
 settings = get_settings()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ── JWT Denylist (mémoire, thread-safe via asyncio.Lock) ──────────────────────
 # Contient les JTI (jti claim) des tokens révoqués.
@@ -43,24 +41,29 @@ async def est_token_revoque(jti: str) -> bool:
 
 
 # ── Mots de passe ─────────────────────────────────────────────────────────────
-# bcrypt limite les mots de passe à 72 bytes.
-# Les versions récentes de bcrypt lèvent ValueError si dépassé → on tronque
-# explicitement pour garantir la cohérence entre hash et vérification.
-_BCRYPT_MAX_BYTES = 72
-
-
-def _tronquer_mdp(mot_de_passe: str) -> str:
-    """Tronque le mot de passe à 72 bytes (limite bcrypt)."""
-    encoded = mot_de_passe.encode("utf-8")
-    return encoded[:_BCRYPT_MAX_BYTES].decode("utf-8", errors="ignore")
-
+# passlib 1.7.4 est incompatible avec bcrypt >= 4.0.0 (passlib appelle bcrypt
+# en interne avec un secret > 72 bytes lors de la détection du "wrap bug").
+# Solution : utiliser bcrypt directement, sans passer par passlib.
+# bcrypt tronque à 72 bytes nativement — aucune manipulation manuelle requise.
 
 def hasher_mot_de_passe(mot_de_passe: str) -> str:
-    return pwd_context.hash(_tronquer_mdp(mot_de_passe))
+    """Hash le mot de passe avec bcrypt (rounds=12)."""
+    return bcrypt.hashpw(
+        mot_de_passe.encode("utf-8"),
+        bcrypt.gensalt(rounds=12),
+    ).decode("utf-8")
 
 
 def verifier_mot_de_passe(mot_de_passe: str, hash: str) -> bool:
-    return pwd_context.verify(_tronquer_mdp(mot_de_passe), hash)
+    """Vérifie le mot de passe contre son hash bcrypt."""
+    try:
+        return bcrypt.checkpw(
+            mot_de_passe.encode("utf-8"),
+            hash.encode("utf-8"),
+        )
+    except Exception:
+        return False
+
 
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
