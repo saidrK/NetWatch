@@ -43,13 +43,24 @@ async def est_token_revoque(jti: str) -> bool:
 
 
 # ── Mots de passe ─────────────────────────────────────────────────────────────
+# bcrypt limite les mots de passe à 72 bytes.
+# Les versions récentes de bcrypt lèvent ValueError si dépassé → on tronque
+# explicitement pour garantir la cohérence entre hash et vérification.
+_BCRYPT_MAX_BYTES = 72
+
+
+def _tronquer_mdp(mot_de_passe: str) -> str:
+    """Tronque le mot de passe à 72 bytes (limite bcrypt)."""
+    encoded = mot_de_passe.encode("utf-8")
+    return encoded[:_BCRYPT_MAX_BYTES].decode("utf-8", errors="ignore")
+
 
 def hasher_mot_de_passe(mot_de_passe: str) -> str:
-    return pwd_context.hash(mot_de_passe)
+    return pwd_context.hash(_tronquer_mdp(mot_de_passe))
 
 
 def verifier_mot_de_passe(mot_de_passe: str, hash: str) -> bool:
-    return pwd_context.verify(mot_de_passe, hash)
+    return pwd_context.verify(_tronquer_mdp(mot_de_passe), hash)
 
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
