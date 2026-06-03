@@ -53,7 +53,7 @@ class InfluxDBService:
             .field("bp_entrant", m.bp_entrant)
             .field("bp_sortant", m.bp_sortant)
             .field("disponible", int(m.disponible))
-            .time(m.timestamp, WritePrecision.SECONDS)
+            .time(m.timestamp, WritePrecision.S)
         )
         try:
             async with self._client() as client:
