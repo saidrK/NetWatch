@@ -59,8 +59,8 @@ function SparklineBar({ history = [], color = CYAN }) {
 }
 
 // ── Graphique déviance trafic ─────────────────────────────────
-function DevianceChart({ scoreHistory = [], anomalieCount = 0 }) {
-  const hasAnomalie = anomalieCount > 0
+function DevianceChart({ scoreHistory = [] }) {
+  const isCurrentlyAnomalous = scoreHistory.length > 0 && scoreHistory[scoreHistory.length - 1].score >= 0.5
 
   if (scoreHistory.length === 0) {
     return (
@@ -86,7 +86,7 @@ function DevianceChart({ scoreHistory = [], anomalieCount = 0 }) {
   return (
     <div className="relative w-full mt-3">
       {/* Badge PIC ANOMALIQUE */}
-      {hasAnomalie && (
+      {isCurrentlyAnomalous && (
         <div className="absolute top-2 left-2 z-10 bg-[#FF4E00]/20 border border-[#FF4E00] text-[#FF4E00] text-[10px] font-mono px-2 py-0.5">
           ● PIC ANOMALIQUE DÉTECTÉ
         </div>
@@ -126,11 +126,11 @@ function DevianceChart({ scoreHistory = [], anomalieCount = 0 }) {
           <Area
             type="monotone"
             dataKey="score"
-            stroke={hasAnomalie ? ORANGE : CYAN}
+            stroke={isCurrentlyAnomalous ? ORANGE : CYAN}
             strokeWidth={2}
-            fill={hasAnomalie ? 'url(#gradDeviance)' : 'url(#gradTrafic)'}
+            fill={isCurrentlyAnomalous ? 'url(#gradDeviance)' : 'url(#gradTrafic)'}
             dot={false}
-            activeDot={{ r: 3, fill: hasAnomalie ? ORANGE : CYAN }}
+            activeDot={{ r: 3, fill: isCurrentlyAnomalous ? ORANGE : CYAN }}
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -138,8 +138,8 @@ function DevianceChart({ scoreHistory = [], anomalieCount = 0 }) {
       {/* Labels axes */}
       <div className="flex justify-between text-[9px] font-mono mt-1">
         <span className="bg-[#00FFD1] text-black px-1.5 py-0.5">T-{HISTORY}MIN</span>
-        <span className={`text-black px-1.5 py-0.5 ${hasAnomalie ? 'bg-[#FF4E00]' : 'bg-[#00FFD1]'}`}>
-          MAINTENANT ({hasAnomalie ? 'ANOMALIE_ACTIVE' : 'NORMAL'})
+        <span className={`text-black px-1.5 py-0.5 ${isCurrentlyAnomalous ? 'bg-[#FF4E00]' : 'bg-[#00FFD1]'}`}>
+          MAINTENANT ({isCurrentlyAnomalous ? 'ANOMALIE_ACTIVE' : 'NORMAL'})
         </span>
       </div>
     </div>
@@ -276,7 +276,7 @@ export default function ListeAnomalies() {
           </div>
         </div>
 
-        <DevianceChart scoreHistory={scoreHistory} anomalieCount={activeAnoms} />
+        <DevianceChart scoreHistory={scoreHistory} />
       </section>
 
       {/* ══ 3. HEADER LOG ════════════════════════════════════ */}
