@@ -2,7 +2,7 @@
 main.py — Point d'entrée de l'API FastAPI
 """
 import logging
-import time
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -11,7 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import get_settings
-from database.postgresql import init_db, close_db
+from database.postgresql import init_db, close_db, AsyncSessionLocal
+from database.influxdb import get_influx
+from api.v1.metriques import _pipeline_collecte
 
 # Logging 
 logging.basicConfig(
@@ -21,6 +23,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+async def background_collector():
+    """Tâche en arrière-plan pour collecter les métriques Prometheus toutes les 15 secondes."""
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                influx = get_influx()
+                # On utilise next() car get_influx() est un générateur FastAPI (yield)
+                influx_service = next(influx) if hasattr(influx, "__next__") else influx
+                await _pipeline_collecte(db, influx_service)
+        except Exception as e:
+            logger.error(f"❌ Erreur Background Collector: {e}")
+        await asyncio.sleep(15)
 
 
 # Lifespan (startup / shutdown) 
@@ -34,9 +49,13 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"🌍 Environnement : {settings.environment}")
 
+    # Démarrer la collecte en arrière-plan
+    collector_task = asyncio.create_task(background_collector())
+
     yield  # L'application tourne ici
 
     # Shutdown 
+    collector_task.cancel()
     logger.info("🛑 Arrêt de la plateforme...")
     await close_db()
 
