@@ -70,7 +70,7 @@ function KpiCard({ label, value, unit, icon: Icon, accent = CYAN, state = 'ok', 
         </span>
         {unit && <span className="font-mono" style={{ color: '#4b5563', fontSize: 15, marginBottom: 4 }}>{unit}</span>}
       </div>
-      {sub && <span className="font-mono" style={{ color: '#4b5563', fontSize: 11 }}>{sub}</span>}
+      {sub && <span className="font-mono font-bold" style={{ color: '#4b5563', fontSize: 13 }}>{sub}</span>}
     </div>
   )
 }

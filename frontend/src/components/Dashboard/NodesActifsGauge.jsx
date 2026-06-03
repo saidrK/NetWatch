@@ -60,7 +60,7 @@ export default function NodesActifsGauge({ nodesUp = null, nodesTotal = 0, loadi
         )}
       </div>
 
-      <div className="mt-2 text-[10px] font-mono text-center" style={{ color }}>
+      <div className="mt-2 text-xs font-bold font-mono text-center" style={{ color }}>
         {percent !== null
           ? percent === 100 ? '● TOUS OPÉRATIONNELS' : `● ${100 - percent}% EN ERREUR`
           : '● EN ATTENTE'}

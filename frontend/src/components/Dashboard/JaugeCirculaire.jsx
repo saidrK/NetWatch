@@ -55,7 +55,7 @@ export default function JaugeCirculaire({ value, label, unit = '%', loading = fa
       </div>
 
       {/* Légende seuils */}
-      <div className="flex gap-3 mt-2 text-[9px] font-mono text-gray-600">
+      <div className="flex gap-4 mt-2 text-xs font-bold font-mono text-gray-600">
         <span style={{ color: '#00FFD1' }}>■ OK&lt;75</span>
         <span style={{ color: '#FFD700' }}>■ WARN&lt;90</span>
         <span style={{ color: '#FF4E00' }}>■ CRIT≥90</span>
