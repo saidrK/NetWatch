@@ -4,11 +4,18 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
 
+// URL WebSocket backend — port 8000 — chemin /ws/dashboard pour métriques
+const WS_URL = '/ws/dashboard'
+
 function buildWebSocketUrl(customUrl) {
-  const raw = (customUrl || import.meta.env.VITE_WS_URL || '/ws/dashboard').replace(/\/$/, '')
+  const raw = (customUrl || import.meta.env.VITE_WS_URL || WS_URL).replace(/\/$/, '')
 
   // URL complète déjà prête
   if (raw.startsWith('ws://') || raw.startsWith('wss://')) {
+    // Si l'URL contient déjà /api/v1/ws ou /ws, retourner telle quelle
+    if (raw.includes('/api/v1/ws') || raw.endsWith('/ws')) {
+      return raw
+    }
     return raw.endsWith('/ws/dashboard') ? raw : `${raw}/ws/dashboard`
   }
 
@@ -41,6 +48,8 @@ export function useWebSocket(url) {
   const reconnectTimeoutRef = useRef(null)
   const reconnectAttempts = useRef(0)
   const manualCloseRef = useRef(false)
+  const lastUpdateTime = useRef(0)
+  const throttleTimeoutRef = useRef(null)
   const MAX_RECONNECT_ATTEMPTS = 5
 
   const connect = useCallback(() => {
@@ -62,7 +71,27 @@ export function useWebSocket(url) {
       wsRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data)
-          setData(message)
+          
+          if (message.type === 'error' && message.code === 'metrics_unavailable') {
+            window.dispatchEvent(new CustomEvent('app-toast', { 
+              detail: { type: 'error', message: 'Attention : Source de métriques temporairement inaccessible', duration: 7000 } 
+            }))
+            return // Maintient la dernière valeur connue (ne pas set data)
+          }
+
+          const now = Date.now()
+          
+          // Throttling: Update state at most once per second
+          if (now - lastUpdateTime.current >= 1000) {
+            setData(message)
+            lastUpdateTime.current = now
+          } else {
+            if (throttleTimeoutRef.current) clearTimeout(throttleTimeoutRef.current)
+            throttleTimeoutRef.current = setTimeout(() => {
+              setData(message)
+              lastUpdateTime.current = Date.now()
+            }, 1000 - (now - lastUpdateTime.current))
+          }
         } catch (err) {
           console.error('❌ Erreur parsing WebSocket message:', err)
         }

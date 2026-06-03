@@ -18,7 +18,7 @@ export const STORAGE_KEYS = {
 const api = axios.create({
   baseURL: getApiBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
+  timeout: 30000,
 })
 
 // Injecte le JWT sur chaque requête
@@ -38,11 +38,23 @@ api.interceptors.response.use(
     const url = error.config?.url ?? ''
     const onLoginPage = window.location.pathname === '/login'
     const isLoginRequest = url.includes('/auth/login')
+    const isValidationRequest = url.includes('/auth/me')
 
-    if (status === 401 && !isLoginRequest && !onLoginPage) {
+    // Log les erreurs en console pour debug
+    console.error(`[API ERROR] ${status} → ${url}`)
+
+    if (status === 401 && !isLoginRequest && !isValidationRequest && !onLoginPage) {
       localStorage.removeItem(STORAGE_KEYS.token)
       localStorage.removeItem(STORAGE_KEYS.user)
+      sessionStorage.setItem('auth_message', 'Session expirée ou mot de passe modifié.')
       window.location.href = '/login'
+    } else if (status >= 500) {
+      // NE PAS afficher de toast pour les erreurs 500 — laisser le composant gérer
+      console.warn(`[NETWATCH] Service ${status} indisponible: ${url}`)
+    } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'warning', message: 'Délai d\'attente dépassé. Le serveur est lent.', duration: 5000 } }));
+    } else if (!error.response && !isValidationRequest) {
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'error', message: 'Liaison perdue. Vérifiez votre connexion réseau.', duration: 5000 } }));
     }
     return Promise.reject(error)
   },
@@ -53,6 +65,7 @@ export const authAPI = {
   login: (email, mot_de_passe) =>
     api.post('/auth/login', { email, mot_de_passe }),
   logout: () => api.post('/auth/logout'),
+  me: () => api.get('/auth/me'),
 }
 
 // — Utilisateurs
@@ -68,7 +81,7 @@ export const utilisateursAPI = {
 export const equipementsAPI = {
   lister: (params) => api.get('/equipements/', { params }),
   get: (id) => api.get(`/equipements/${id}`),
-  scanner: (plage) => api.post('/equipements/scan', { plage }),
+  scanner: (plage, signal) => api.post('/equipements/scan', { plage }, { timeout: 120000, signal }),
 }
 
 // — Métriques

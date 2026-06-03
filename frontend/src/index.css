@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,7 +8,16 @@
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: "JetBrains Mono", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    --color-tech-bg: #050505;
+    --color-tech-sidebar: #0D0D0D;
+    --color-tech-panel: #111111;
+    --color-tech-border: #222222;
+    --color-tech-accent: #00FFD1;
+    --color-tech-warning: #FFD700;
+    --color-tech-critical: #FF4E00;
+    --color-tech-text: #E0E0E0;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -141,4 +151,73 @@
   html {
     @apply font-sans;
     }
+}
+
+* {
+  border-radius: 0 !important;
+}
+
+body {
+  background-color: #050505;
+  background-image: 
+    linear-gradient(rgba(0, 255, 209, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 209, 0.02) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: #E0E0E0;
+}
+
+@keyframes blinking {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '_';
+  animation: blinking 1.2s step-end infinite;
+  color: #00FFD1;
+  margin-left: 4px;
+}
+
+@keyframes flicker {
+  0% { opacity: 0.98; }
+  50% { opacity: 1; }
+  100% { opacity: 0.99; }
+}
+
+.crt-flicker {
+  animation: flicker 0.3s infinite;
+}
+
+@layer components {
+  .cyber-card {
+    @apply bg-[#111] border border-[#222] p-5 hover:border-[#00FFD1] transition-colors duration-150;
+  }
+  
+  .cyber-button {
+    @apply px-4 py-2 bg-[#00FFD1]/10 border border-[#00FFD1] text-[#00FFD1] hover:bg-[#00FFD1]/20 hover:shadow-[0_0_8px_rgba(0,255,209,0.5)] transition-all uppercase font-bold tracking-widest text-xs flex items-center justify-center gap-2;
+  }
+  
+  .cyber-button-critical {
+    @apply px-4 py-2 bg-[#FF4E00]/10 border border-[#FF4E00] text-[#FF4E00] hover:bg-[#FF4E00]/20 hover:shadow-[0_0_8px_rgba(255,78,0,0.5)] transition-all uppercase font-bold tracking-widest text-xs flex items-center justify-center gap-2;
+  }
+  
+  .cyber-input {
+    @apply w-full bg-[#050505] border border-[#333] text-[#E0E0E0] p-3 focus:border-[#00FFD1] focus:outline-none focus:shadow-[0_0_4px_rgba(0,255,209,0.3)] transition-all font-mono text-sm placeholder-[#555];
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+  border-left: 1px solid #222;
+}
+::-webkit-scrollbar-thumb {
+  background: #222;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00FFD1;
 }
