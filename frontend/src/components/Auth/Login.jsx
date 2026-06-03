@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Terminal, Shield, LogIn, Award, Users, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -10,16 +10,15 @@ export default function Login() {
   const [motDePasse, setMotDePasse] = useState('')
   const [erreur, setErreur] = useState(null)
 
-  // CHANTIER 1 : Intercepter le message de déconnexion (401/Invalidation)
-  import('react').then(({ useEffect }) => {
-    useEffect(() => {
-      const msg = sessionStorage.getItem('auth_message')
-      if (msg) {
-        setErreur(msg)
-        sessionStorage.removeItem('auth_message')
-      }
-    }, [])
-  })
+  // Intercepter le message de déconnexion (401/Invalidation)
+  // ✅ import statique + useEffect dans le corps du composant (Rules of Hooks)
+  useEffect(() => {
+    const msg = sessionStorage.getItem('auth_message')
+    if (msg) {
+      setErreur(msg)
+      sessionStorage.removeItem('auth_message')
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
