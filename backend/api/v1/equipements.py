@@ -71,7 +71,7 @@ class ScanResponse(BaseModel):
 # ── GET /equipements ──────────────────────────────────────────────────────────
 @router.get(
     "/",
-    response_model=list[EquipementResponse],
+    response_model=list[EquipementDetailResponse],
     summary="Liste tous les équipements actifs",
 )
 async def lister_equipements(
@@ -80,7 +80,7 @@ async def lister_equipements(
     db: AsyncSession = Depends(get_db),
     _: Utilisateur = Depends(get_current_user),
 ):
-    query = select(Equipement).where(Equipement.is_active == True).order_by(Equipement.adresse_ip)
+    query = select(Equipement).options(selectinload(Equipement.ports)).where(Equipement.is_active == True).order_by(Equipement.adresse_ip)
 
     if statut:
         query = query.where(Equipement.statut == statut)

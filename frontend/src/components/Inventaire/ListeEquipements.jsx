@@ -225,7 +225,7 @@ export default function ListeEquipements() {
                     
                     {nodePorts.length > 0 ? (
                       <>
-                        <div className="grid grid-cols-3 text-[10px] text-gray-500 font-mono uppercase border-b border-gray-700 pb-2 bg-[#0a1a0a]">
+                        <div className="grid grid-cols-[1fr_1fr_2fr] text-[10px] text-gray-500 font-mono uppercase border-b border-gray-700 pb-2 bg-[#0a1a0a] px-2">
                           <span>PORT / PROTOCOLE</span>
                           <span>STATUT</span>
                           <span>SERVICE SUPERVISÉ</span>
@@ -234,7 +234,7 @@ export default function ListeEquipements() {
                         {nodePorts.map((port) => (
                           <div
                             key={port.id}
-                            className="grid grid-cols-3 text-xs border-b border-[#222]/50 pb-2 pt-2 last:border-0"
+                            className="grid grid-cols-[1fr_1fr_2fr] text-xs border-b border-[#222]/50 pb-2 pt-2 px-2 last:border-0"
                           >
                             <span className="font-mono text-cyan-300">
                               {port.numero}/{port.protocole}

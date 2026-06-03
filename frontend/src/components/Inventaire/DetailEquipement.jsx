@@ -42,7 +42,7 @@ export default function DetailEquipement() {
   const isUp = equipement.statut === 'EN_LIGNE'
 
   return (
-    <div className="flex flex-col gap-6 crt-flicker font-mono pb-10">
+    <div className="flex flex-col gap-6 crt-flicker font-mono pb-10 p-6">
       {/* Header */}
       <div className="flex items-center gap-4 border-b border-[#222] pb-4">
         <button 
@@ -119,7 +119,7 @@ export default function DetailEquipement() {
         <div className="p-4">
           {equipement.ports && equipement.ports.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-4 text-[10px] text-[#444] uppercase font-black border-b border-[#222] pb-2 px-2">
+              <div className="grid grid-cols-[1fr_1fr_1fr_2fr] text-[10px] text-[#444] uppercase font-black border-b border-[#222] pb-2 px-2">
                 <span>PORT</span>
                 <span>PROTOCOLE</span>
                 <span>STATUT</span>
@@ -128,7 +128,7 @@ export default function DetailEquipement() {
               {equipement.ports.map((port) => (
                 <div
                   key={port.id}
-                  className="grid grid-cols-4 text-xs text-gray-400 border-b border-[#222]/50 pb-2 pt-2 px-2 last:border-0 hover:bg-[#1A1A1A] transition-colors"
+                  className="grid grid-cols-[1fr_1fr_1fr_2fr] text-xs text-gray-400 border-b border-[#222]/50 pb-2 pt-2 px-2 last:border-0 hover:bg-[#1A1A1A] transition-colors"
                 >
                   <span className="font-bold text-white">
                     {port.numero}
