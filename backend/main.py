@@ -3,6 +3,7 @@ main.py — Point d'entrée de l'API FastAPI
 """
 import logging
 import asyncio
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
