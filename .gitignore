@@ -39,6 +39,11 @@ logs/
 .idea/
 *.swp
 
+# Agent / local workflow metadata
+.instructions.md
+.agents/
+.codex/
+
 # OS
 .DS_Store
 Thumbs.db
