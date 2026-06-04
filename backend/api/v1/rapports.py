@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.postgresql import get_db
+from database.postgresql import get_db, AsyncSessionLocal
 from models.rapport import Rapport, FormatRapport, TypeGeneration
 from models.utilisateur import Utilisateur
 from api.v1.utilisateurs import get_current_user
@@ -97,8 +97,8 @@ async def generer_rapport(
     await db.commit()
     await db.refresh(rapport)
     
-    # Lancer la génération en arrière-plan
-    background_tasks.add_task(_generer_fichier, rapport.id, db)
+    # Lancer la génération en arrière-plan avec sa PROPRE session DB
+    background_tasks.add_task(_generer_fichier, rapport.id)
     
     return rapport
 
@@ -141,42 +141,41 @@ async def telecharger_rapport(
     )
 
 
-async def _generer_fichier(rapport_id: int, db: AsyncSession):
+async def _generer_fichier(rapport_id: int):
     """
     Génère le fichier du rapport en arrière-plan.
-    Implémente la génération réelle pour PDF, Excel et CSV.
+    Ouvre sa PROPRE session DB (la session de requête est déjà fermée).
     """
     import logging
     logger = logging.getLogger(__name__)
 
-    result = await db.execute(select(Rapport).where(Rapport.id == rapport_id))
-    rapport = result.scalar_one_or_none()
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Rapport).where(Rapport.id == rapport_id))
+        rapport = result.scalar_one_or_none()
 
-    if not rapport:
-        logger.error(f"❌ Rapport {rapport_id} non trouvé")
-        return
+        if not rapport:
+            logger.error(f"❌ Rapport {rapport_id} non trouvé")
+            return
 
-    try:
-        # Créer le dossier /tmp si nécessaire
-        Path("/tmp").mkdir(exist_ok=True)
+        try:
+            Path("/tmp").mkdir(exist_ok=True)
+            file_path = Path(f"/tmp/rapport_{rapport_id}.{rapport.format.value.lower()}")
 
-        file_path = Path(f"/tmp/rapport_{rapport_id}.{rapport.format.value.lower()}")
+            if rapport.format == FormatRapport.CSV:
+                await _generer_csv(rapport, db, file_path)
+            elif rapport.format == FormatRapport.EXCEL:
+                await _generer_excel(rapport, db, file_path)
+            elif rapport.format == FormatRapport.PDF:
+                await _generer_pdf(rapport, db, file_path)
 
-        if rapport.format == FormatRapport.CSV:
-            await _generer_csv(rapport, db, file_path)
-        elif rapport.format == FormatRapport.EXCEL:
-            await _generer_excel(rapport, db, file_path)
-        elif rapport.format == FormatRapport.PDF:
-            await _generer_pdf(rapport, db, file_path)
+            rapport.chemin_fichier = str(file_path)
+            await db.commit()
+            logger.info(f"✅ Rapport {rapport_id} généré: {rapport.chemin_fichier}")
 
-        rapport.chemin_fichier = str(file_path)
-        await db.commit()
-        logger.info(f"✅ Rapport {rapport_id} généré: {rapport.chemin_fichier}")
-
-    except Exception as e:
-        logger.error(f"❌ Erreur génération rapport {rapport_id}: {e}")
-        rapport.chemin_fichier = None
-        await db.commit()
+        except Exception as e:
+            logger.error(f"❌ Erreur génération rapport {rapport_id}: {e}")
+            rapport.chemin_fichier = None
+            await db.commit()
 
 
 async def _generer_csv(rapport: Rapport, db: AsyncSession, file_path: Path):

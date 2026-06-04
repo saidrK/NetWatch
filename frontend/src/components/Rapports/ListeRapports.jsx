@@ -22,16 +22,17 @@ export default function ListeRapports() {
     }
   }
 
-  const handleTelecharger = async (id, titre) => {
+  const handleTelecharger = async (id, titre, format = 'pdf') => {
     setIsExporting(id)
     setExportLogged(`Génération du package d'exportation: ${titre}...`)
     try {
-      await rapportsAPI.telecharger(id)
-      setExportLogged(`Fichier '${titre.toUpperCase()}' téléchargé avec succès !`)
+      await rapportsAPI.telecharger(id, titre, format)
+      setExportLogged(`Fichier '${titre.toUpperCase()}.${format.toLowerCase()}' téléchargé avec succès !`)
       setTimeout(() => setExportLogged(null), 3500)
     } catch (error) {
       console.error('Erreur téléchargement rapport:', error)
-      setExportLogged(null)
+      setExportLogged(`Erreur : fichier pas encore prêt. Patientez quelques secondes puis réessayez.`)
+      setTimeout(() => setExportLogged(null), 5000)
     } finally {
       setIsExporting(null)
     }
@@ -132,7 +133,7 @@ export default function ListeRapports() {
                       </button>
                     )}
                     <button
-                      onClick={() => handleTelecharger(rapport.id, rapport.titre)}
+                      onClick={() => handleTelecharger(rapport.id, rapport.titre, rapport.format || 'PDF')}
                       disabled={isExporting === rapport.id}
                       className="border border-cyan-400 text-cyan-400 text-[10px] font-mono px-3 py-1 hover:bg-cyan-400 hover:text-black transition-colors rounded-none flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >

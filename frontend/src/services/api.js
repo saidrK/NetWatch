@@ -111,6 +111,32 @@ export const rapportsAPI = {
   generer: (data) => api.post('/rapports/generer', data),
   get: (id) => api.get(`/rapports/${id}`),
   supprimer: (id) => api.delete(`/rapports/${id}`),
+  /**
+   * Télécharge un rapport et déclenche le téléchargement navigateur.
+   * Utilise responseType: 'blob' pour recevoir le binaire (PDF/Excel/CSV).
+   */
+  telecharger: async (id, titre = 'rapport', format = 'pdf') => {
+    const response = await api.get(`/rapports/${id}/telecharger`, {
+      responseType: 'blob',
+    })
+    // Extraire le nom de fichier depuis Content-Disposition si disponible
+    const contentDisposition = response.headers['content-disposition'] || ''
+    const match = contentDisposition.match(/filename[^;=\n]*=([^;\n]*)/)
+    const filename = match
+      ? match[1].replace(/["']/g, '').trim()
+      : `${titre}_${new Date().toISOString().slice(0, 10)}.${format.toLowerCase()}`
+
+    // Créer un lien temporaire et déclencher le téléchargement
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+    return response
+  },
 }
 
 export default api
