@@ -300,111 +300,152 @@ async def _generer_excel(rapport: Rapport, db: AsyncSession, file_path: Path):
 
 
 async def _generer_pdf(rapport: Rapport, db: AsyncSession, file_path: Path):
-    """Génère un rapport au format PDF."""
-    from reportlab.lib.pagesizes import letter
+    """Génère un rapport au format PDF riche."""
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet
-    from models.alerte import Alerte
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, HRFlowable
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from models.alerte import Alerte, NiveauAlerte
     from models.equipement import Equipement
 
-    doc = SimpleDocTemplate(str(file_path), pagesize=letter)
+    doc = SimpleDocTemplate(
+        str(file_path), pagesize=A4,
+        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
+        title=rapport.titre, author="NetWatch Platform"
+    )
+    W = A4[0] - 4*cm
     styles = getSampleStyleSheet()
-    story = []
+    
+    # Couleurs du thème
+    DARK_BLUE = colors.HexColor('#0a1628')
+    MID_BLUE = colors.HexColor('#1e3a5f')
+    CYAN = colors.HexColor('#00d4ff')
+    WHITE = colors.white
+    RED_ALERT = colors.HexColor('#cc2200')
+    YELLOW_WARN = colors.HexColor('#f0a500')
+    GREEN_OK = colors.HexColor('#00aa55')
+    LIGHT_GREY = colors.HexColor('#f2f4f7')
+    MED_GREY = colors.HexColor('#d0d7e2')
 
-    # En-tête
-    story.append(Paragraph(f"RAPPORT: {rapport.titre}", styles['Title']))
-    story.append(Spacer(1, 12))
-    story.append(Paragraph(f"Période: {rapport.periode_debut} à {rapport.periode_fin}", styles['Normal']))
-    story.append(Paragraph(f"Date génération: {rapport.date_generation}", styles['Normal']))
-    story.append(Spacer(1, 24))
+    s_title = ParagraphStyle('Title', fontSize=26, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_CENTER)
+    s_sub = ParagraphStyle('Sub', fontSize=12, textColor=CYAN, fontName='Helvetica', alignment=TA_CENTER, spaceAfter=6)
+    s_h1 = ParagraphStyle('H1', fontSize=14, textColor=DARK_BLUE, fontName='Helvetica-Bold', spaceBefore=15, spaceAfter=10)
+    s_body = ParagraphStyle('Body', fontSize=10, textColor=colors.black, fontName='Helvetica', spaceAfter=6, leading=14)
 
-    # Récupérer les données
+    def head_box(txt):
+        t = Table([[Paragraph(txt, ParagraphStyle('HB', fontSize=12, textColor=WHITE, fontName='Helvetica-Bold'))]], colWidths=[W])
+        t.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,-1), DARK_BLUE), ('PADDING', (0,0), (-1,-1), 8)]))
+        return t
+
     result_alertes = await db.execute(
-        select(Alerte).where(
-            Alerte.timestamp >= rapport.periode_debut,
-            Alerte.timestamp <= rapport.periode_fin
-        )
+        select(Alerte).where(Alerte.timestamp >= rapport.periode_debut, Alerte.timestamp <= rapport.periode_fin).order_by(Alerte.timestamp.desc())
     )
     alertes = result_alertes.scalars().all()
-
     result_equipements = await db.execute(select(Equipement))
     equipements = result_equipements.scalars().all()
 
-    # Statistiques
-    story.append(Paragraph("STATISTIQUES", styles['Heading2']))
-    stats_data = [
-        ['Nombre d\'alertes', str(len(alertes))],
-        ['Nombre d\'équipements', str(len(equipements))],
-        ['Alertes critiques', str(sum(1 for a in alertes if a.niveau.value == 'CRITIQUE'))],
+    nb_critique = sum(1 for a in alertes if a.niveau == NiveauAlerte.CRITIQUE)
+    nb_warning = sum(1 for a in alertes if a.niveau == NiveauAlerte.WARNING)
+    eq_en_ligne = sum(1 for e in equipements if e.statut.value == 'EN_LIGNE')
+
+    story = []
+
+    # --- COVER PAGE ---
+    cover_bg = Table([[ 
+        Paragraph("NETWATCH", s_title),
+        Paragraph("Plateforme Intelligente de Supervision Réseau", s_sub),
+        Spacer(1, 1*cm),
+        Paragraph("RAPPORT DE SUPERVISION", ParagraphStyle('RT', fontSize=18, textColor=CYAN, alignment=TA_CENTER)),
+        Paragraph(rapport.titre.upper(), ParagraphStyle('RN', fontSize=22, textColor=WHITE, alignment=TA_CENTER, spaceBefore=10)),
+    ]], colWidths=[W])
+    cover_bg.setStyle(TableStyle([
+        ('BACKGROUND', (0,0),(-1,-1), DARK_BLUE),
+        ('PADDING', (0,0),(-1,-1), 40),
+        ('ROUNDEDCORNERS', [8]),
+    ]))
+    story.append(cover_bg)
+    story.append(Spacer(1, 1*cm))
+
+    meta_data = [
+        ['Période analysée', f"{rapport.periode_debut.strftime('%d/%m/%Y %H:%M')}  →  {rapport.periode_fin.strftime('%d/%m/%Y %H:%M')}"],
+        ['Date de génération', rapport.date_generation.strftime('%d/%m/%Y à %H:%M:%S')],
+        ['Format', rapport.format.value],
     ]
-    stats_table = Table(stats_data, colWidths=[200, 100])
-    stats_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ('TEXTCOLOR', (0, 0), (0, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-        ('BACKGROUND', (1, 0), (1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    meta_table = Table(meta_data, colWidths=[5*cm, W-5*cm])
+    meta_table.setStyle(TableStyle([
+        ('FONTNAME', (0,0),(0,-1), 'Helvetica-Bold'),
+        ('BACKGROUND',(0,0),(-1,-1), LIGHT_GREY),
+        ('GRID', (0,0),(-1,-1), 0.5, MED_GREY),
+        ('PADDING', (0,0),(-1,-1), 6),
     ]))
-    story.append(stats_table)
-    story.append(Spacer(1, 24))
+    story.append(meta_table)
+    story.append(PageBreak())
 
-    # Liste des alertes
-    story.append(Paragraph("ALERTE", styles['Heading2']))
-    alertes_data = [['ID', 'NIVEAU', 'ÉQUIPEMENT', 'DATE', 'MESSAGE']]
-    for alerte in alertes:
-        alertes_data.append([
-            str(alerte.id),
-            alerte.niveau.value,
-            str(alerte.equipement_id) if alerte.equipement_id else 'N/A',
-            str(alerte.timestamp),
-            alerte.message[:50] + '...' if len(alerte.message) > 50 else alerte.message
-        ])
+    # --- 1. RESUME EXECUTIF ---
+    story.append(head_box("1. RÉSUMÉ EXÉCUTIF"))
+    story.append(Spacer(1, 0.5*cm))
+    kpi_data = [
+        ['INDICATEUR', 'VALEUR', 'ÉTAT'],
+        ['Équipements supervisés', str(len(equipements)), '—'],
+        ['Équipements EN LIGNE', str(eq_en_ligne), '✓ OK' if eq_en_ligne == len(equipements) else '⚠ Partiel'],
+        ['Total alertes', str(len(alertes)), '—'],
+        ['Alertes CRITIQUES', str(nb_critique), '🔴' if nb_critique > 0 else '✓'],
+        ['Alertes WARNING', str(nb_warning), '🟡' if nb_warning > 0 else '✓'],
+    ]
+    kpi_table = Table(kpi_data, colWidths=[7*cm, 4*cm, W-11*cm])
+    kpi_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0),(-1,0), MID_BLUE), ('TEXTCOLOR', (0,0),(-1,0), WHITE),
+        ('FONTNAME', (0,0),(-1,0), 'Helvetica-Bold'),
+        ('GRID', (0,0),(-1,-1), 0.5, MED_GREY),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1), [WHITE, LIGHT_GREY]),
+        ('PADDING', (0,0),(-1,-1), 6),
+        ('ALIGN', (1,0),(-1,-1), 'CENTER'),
+    ]))
+    story.append(kpi_table)
+    story.append(Spacer(1, 1*cm))
 
-    if len(alertes_data) > 1:
-        alertes_table = Table(alertes_data, colWidths=[40, 60, 60, 80, 200])
-        alertes_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ]))
-        story.append(alertes_table)
-    else:
-        story.append(Paragraph("Aucune alerte sur cette période.", styles['Normal']))
-
-    story.append(Spacer(1, 24))
-
-    # Liste des équipements
-    story.append(Paragraph("ÉQUIPEMENTS", styles['Heading2']))
-    equipements_data = [['ID', 'HOSTNAME', 'IP', 'TYPE', 'STATUT']]
+    # --- 2. INVENTAIRE ---
+    story.append(head_box("2. INVENTAIRE DES ÉQUIPEMENTS"))
+    story.append(Spacer(1, 0.5*cm))
+    eq_data = [['ID', 'IP', 'HOSTNAME', 'TYPE', 'STATUT']]
     for eq in equipements:
-        equipements_data.append([
-            str(eq.id),
-            eq.hostname or 'N/A',
-            eq.adresse_ip,
-            eq.type.value if hasattr(eq.type, 'value') else str(eq.type),
-            eq.statut.value if hasattr(eq.statut, 'value') else str(eq.statut)
-        ])
-
-    equipements_table = Table(equipements_data, colWidths=[40, 100, 100, 80, 80])
-    equipements_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        eq_data.append([str(eq.id), eq.adresse_ip, eq.hostname or '—', eq.type.value if hasattr(eq.type, 'value') else str(eq.type), eq.statut.value if hasattr(eq.statut, 'value') else str(eq.statut)])
+    eq_table = Table(eq_data, colWidths=[1.5*cm, 3.5*cm, 4.5*cm, 3*cm, 3.5*cm])
+    eq_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0),(-1,0), MID_BLUE), ('TEXTCOLOR', (0,0),(-1,0), WHITE),
+        ('FONTNAME', (0,0),(-1,0), 'Helvetica-Bold'), ('FONTSIZE', (0,0),(-1,-1), 8),
+        ('GRID', (0,0),(-1,-1), 0.5, MED_GREY), ('ROWBACKGROUNDS',(0,1),(-1,-1), [WHITE, LIGHT_GREY]),
+        ('PADDING', (0,0),(-1,-1), 5), ('ALIGN', (0,0),(0,-1), 'CENTER'),
     ]))
-    story.append(equipements_table)
+    story.append(eq_table)
+    story.append(Spacer(1, 1*cm))
+
+    # --- 3. ALERTES ---
+    story.append(head_box("3. ANALYSE DES ALERTES (50 Dernières)"))
+    story.append(Spacer(1, 0.5*cm))
+    if alertes:
+        al_data = [['DATE/HEURE', 'NIVEAU', 'EQ_ID', 'CPU', 'RAM', 'SCORE IA']]
+        for a in alertes[:50]:
+            al_data.append([
+                a.timestamp.strftime('%d/%m %H:%M'), a.niveau.value, str(a.equipement_id),
+                f'{a.valeur_cpu:.1f}%', f'{a.valeur_ram:.1f}%', f'{a.score_anomalie:.3f}'
+            ])
+        al_table = Table(al_data, colWidths=[3*cm, 2.5*cm, 2*cm, 2*cm, 2*cm, 2.5*cm])
+        al_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0),(-1,0), colors.HexColor('#2c3e50')), ('TEXTCOLOR', (0,0),(-1,0), WHITE),
+            ('FONTNAME', (0,0),(-1,0), 'Helvetica-Bold'), ('FONTSIZE', (0,0),(-1,-1), 8),
+            ('GRID', (0,0),(-1,-1), 0.4, MED_GREY), ('ROWBACKGROUNDS',(0,1),(-1,-1), [WHITE, LIGHT_GREY]),
+            ('PADDING', (0,0),(-1,-1), 5), ('ALIGN', (1,0),(-1,-1), 'CENTER'),
+        ]))
+        story.append(al_table)
+    else:
+        story.append(Paragraph("Aucune alerte enregistrée sur cette période.", s_body))
+    
+    story.append(Spacer(1, 1*cm))
+    story.append(HRFlowable(width=W, thickness=1, color=MID_BLUE))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(Paragraph("NetWatch Platform v1.0 • PFE 2025/2026 — FSBM, Casablanca", ParagraphStyle('Footer', fontSize=7, textColor=colors.grey, alignment=TA_CENTER)))
 
     doc.build(story)
