@@ -4,7 +4,7 @@ GET  /rapports/                    → liste des rapports
 POST /rapports/generer             → générer un rapport (PDF/CSV/Excel)
 GET  /rapports/{id}/telecharger   → télécharger un rapport
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pathlib import Path
 import csv
@@ -77,10 +77,17 @@ async def generer_rapport(
     Génère un rapport sur la période spécifiée.
     La génération effective se fait en arrière-plan.
     """
+    # Normalise en naive UTC (strip tzinfo) pour correspondre aux colonnes
+    # PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+    def _to_naive_utc(dt: datetime) -> datetime:
+        if dt.tzinfo is not None:
+            return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+
     rapport = Rapport(
         titre=rapport_data.titre,
-        periode_debut=rapport_data.periode_debut,
-        periode_fin=rapport_data.periode_fin,
+        periode_debut=_to_naive_utc(rapport_data.periode_debut),
+        periode_fin=_to_naive_utc(rapport_data.periode_fin),
         format=rapport_data.format,
         type_generation=TypeGeneration.MANUEL,
         auteur_id=current_user.id,
