@@ -185,6 +185,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "3000:80"
+      - "443:443"
+      - "80:80"
     networks:
       - supervision_net
