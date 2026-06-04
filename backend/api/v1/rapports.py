@@ -168,34 +168,6 @@ async def _generer_fichier(rapport_id: int):
             elif rapport.format == FormatRapport.PDF:
                 await _generer_pdf(rapport, db, file_path)
 
-            rapport.chemin_fichier = str(file_path)
-            await db.commit()
-            logger.info(f"✅ Rapport {rapport_id} généré: {rapport.chemin_fichier}")
-
-        except Exception as e:
-            logger.error(f"❌ Erreur génération rapport {rapport_id}: {e}")
-            rapport.chemin_fichier = None
-            await db.commit()
-
-
-async def _generer_csv(rapport: Rapport, db: AsyncSession, file_path: Path):
-    """Génère un rapport au format CSV."""
-    from models.alerte import Alerte
-    from models.equipement import Equipement
-
-    # Récupérer les données
-    result_alertes = await db.execute(
-        select(Alerte).where(
-            Alerte.timestamp >= rapport.periode_debut,
-            Alerte.timestamp <= rapport.periode_fin
-        )
-    )
-    alertes = result_alertes.scalars().all()
-
-    result_equipements = await db.execute(select(Equipement))
-    equipements = result_equipements.scalars().all()
-
-    with open(file_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
 
         # En-tête
