@@ -75,6 +75,7 @@ class TokenResponse(BaseModel):
     role:         str
     nom:          str
     user_id:      int
+    email:        str
 
 
 class LoginRequest(BaseModel):
@@ -158,6 +159,7 @@ async def login(
         role=utilisateur.role.value,
         nom=utilisateur.nom,
         user_id=utilisateur.id,
+        email=utilisateur.email,
     )
 
 

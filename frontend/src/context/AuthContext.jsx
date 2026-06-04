@@ -41,6 +41,7 @@ export function AuthProvider({ children }) {
           id: data.user_id,
           nom: data.nom,
           role: data.role,
+          email: data.email,
         }
 
         localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(profile))
@@ -67,6 +68,7 @@ export function AuthProvider({ children }) {
         id: data.user_id,
         nom: data.nom,
         role: data.role,
+        email: data.email,
       }
 
       localStorage.setItem(STORAGE_KEYS.token, data.access_token)
