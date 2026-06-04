@@ -188,8 +188,7 @@ async def modifier_utilisateur(
         )
         user.role = body.role
 
-    await db.flush()
-    await db.refresh(user)
+    await db.commit()
     return user
 
 
