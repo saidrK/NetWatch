@@ -137,18 +137,21 @@ class NotificationService:
 
     async def _enregistrer_notification(self, alerte_id: int, canal: Canal, dest: str, contenu: str, success: bool, erreur: str):
         """Fonction utilitaire pour écrire en BDD via une session courte (évite les locks prolongés)."""
-        async with AsyncSessionLocal() as db:
-            notif = Notification(
-                alerte_id=alerte_id,
-                canal=canal,
-                destinataire=dest,
-                contenu=contenu,
-                envoye=success,
-                envoye_le=datetime.utcnow() if success else None,
-                erreur=erreur if not success else None,
-            )
-            db.add(notif)
-            await db.commit()
+        try:
+            async with AsyncSessionLocal() as db:
+                notif = Notification(
+                    alerte_id=alerte_id,
+                    canal=canal,
+                    destinataire=dest,
+                    contenu=contenu,
+                    envoye=success,
+                    envoye_le=datetime.utcnow() if success else None,
+                    erreur=erreur if not success else None,
+                )
+                db.add(notif)
+                await db.commit()
+        except Exception as e:
+            logger.warning(f"⚠️ Notification non sauvegardée en DB (alerte_id={alerte_id}): {e}")
 
     async def envoyer_tache_fond(self, alerte: Alerte):
         """

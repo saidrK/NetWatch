@@ -143,7 +143,7 @@ export default function ListeRapports() {
                           EXPORT...
                         </>
                       ) : (
-                        'TÉLÉCHARGER PDF'
+                        `TÉLÉCHARGER ${(rapport.format || 'PDF').toUpperCase()}`
                       )}
                     </button>
                   </div>

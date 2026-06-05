@@ -12,6 +12,7 @@ import JaugeCirculaire     from './JaugeCirculaire'
 import BandePassanteChart  from './BandePassanteChart'
 import AnomalieScore       from './AnomalieScore'
 import LatenceChart        from './LatenceChart'
+import ZabbixPanel      from './ZabbixPanel'
 import NodesActifsGauge    from './NodesActifsGauge'
 
 import {
@@ -352,13 +353,22 @@ export default function Dashboard() {
 
       {/* ══ ROW 5 : ANOMALIE IA + TABLE NŒUDS ══════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Score anomalie — 3 col */}
-        <div className="lg:col-span-3">
+        {/* Score anomalie + footer IA — 3 col */}
+        <div className="lg:col-span-3 flex flex-col gap-3">
           <AnomalieScore
             history={anomalieHistory}
             currentScore={current?.anomaly_score ?? null}
             loading={wsLoading}
           />
+          <div className="border-t border-[#222] pt-3 flex items-center justify-between font-mono px-1" style={{ fontSize: 13 }}>
+            <span className="flex items-center gap-2 font-bold" style={{ color: '#FFD700' }}>
+              <Activity style={{ width: 14, height: 14 }} />
+              ISOLATION FOREST: ACTIF
+            </span>
+            <span className="font-bold" style={{ color: '#4b5563' }}>
+              Score moy.: {current ? current.anomaly_score.toFixed(3) : '-'}
+            </span>
+          </div>
         </div>
 
         {/* Table nœuds — 2 col */}
@@ -410,18 +420,11 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Footer IA */}
-          <div className="border-t border-[#222] pt-3 flex items-center justify-between font-mono" style={{ fontSize: 13 }}>
-            <span className="flex items-center gap-2 font-bold" style={{ color: YELLOW }}>
-              <Activity style={{ width: 14, height: 14 }} />
-              ISOLATION FOREST: ACTIF
-            </span>
-            <span className="font-bold" style={{ color: '#4b5563' }}>
-              Score moy.: {current ? current.anomaly_score.toFixed(3) : '—'}
-            </span>
-          </div>
         </div>
       </div>
+
+      {/* ROW 6 : ZABBIX */}
+      <ZabbixPanel />
 
     </div>
   )

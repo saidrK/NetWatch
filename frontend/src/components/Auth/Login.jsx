@@ -142,7 +142,7 @@ export default function Login() {
           </span>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
-              onClick={() => selectPreset('admin@supervision.local', 'Admin@1234')}
+              onClick={() => selectPreset('admin@supervision.local', 'Admin2026!')}
               type="button"
               className="border border-[#00FFD1] hover:bg-[#00FFD1]/10 p-2 text-left hover:text-[#00FFD1] transition-colors flex flex-col gap-0.5"
             >

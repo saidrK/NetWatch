@@ -83,7 +83,7 @@ async def websocket_dashboard(ws: WebSocket):
             # Attendre 10s OU un message entrant du client (ping/pong/disconnect)
             # Sans recv(), le browser ferme la connexion WebSocket inactive
             recv_task  = asyncio.ensure_future(ws.receive_text())
-            sleep_task = asyncio.ensure_future(asyncio.sleep(10))
+            sleep_task = asyncio.ensure_future(asyncio.sleep(5))
             done, pending = await asyncio.wait(
                 [recv_task, sleep_task],
                 return_when=asyncio.FIRST_COMPLETED,

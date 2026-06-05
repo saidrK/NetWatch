@@ -24,7 +24,7 @@ services:
     environment:
       POSTGRES_DB:       supervision_db
       POSTGRES_USER:     supervision_user
-      POSTGRES_PASSWORD: supervision_pass
+      POSTGRES_PASSWORD: super2005
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
@@ -47,7 +47,7 @@ services:
     environment:
       DOCKER_INFLUXDB_INIT_MODE:         setup
       DOCKER_INFLUXDB_INIT_USERNAME:     admin
-      DOCKER_INFLUXDB_INIT_PASSWORD:     supervision_pass
+      DOCKER_INFLUXDB_INIT_PASSWORD:     super2005
       DOCKER_INFLUXDB_INIT_ORG:          supervision
       DOCKER_INFLUXDB_INIT_BUCKET:       metriques
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_TOKEN}
@@ -109,9 +109,9 @@ services:
     environment:
       DB_SERVER_HOST:    postgres
       DB_SERVER_PORT:    5432          # interne Docker (pas 5433)
-      POSTGRES_DB:       supervision_db
+      POSTGRES_DB:       zabbix
       POSTGRES_USER:     supervision_user
-      POSTGRES_PASSWORD: supervision_pass
+      POSTGRES_PASSWORD: super2005
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,14 +131,14 @@ services:
       ZBX_SERVER_HOST:   zabbix_server
       DB_SERVER_HOST:    postgres
       DB_SERVER_PORT:    5432
-      POSTGRES_DB:       supervision_db
+      POSTGRES_DB:       zabbix
       POSTGRES_USER:     supervision_user
-      POSTGRES_PASSWORD: supervision_pass
+      POSTGRES_PASSWORD: super2005
       PHP_TZ:            Africa/Casablanca
     depends_on:
       - zabbix_server
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - supervision_net
 
@@ -153,7 +153,7 @@ services:
       dockerfile: Dockerfile
     container_name: supervision_backend
     restart: on-failure
-    env_file: .env
+    env_file: backend/.env
     depends_on:
       postgres:
         condition: service_healthy

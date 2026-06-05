@@ -17,7 +17,7 @@ class HistoriqueConnexion(Base):
     id             = Column(Integer, primary_key=True, index=True)
     date_connexion = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     adresse_ip     = Column(String(45), nullable=False)
-    statut         = Column(SAEnum(StatutConnexion), nullable=False)
+    statut         = Column(SAEnum(StatutConnexion, name='statut_connexion_enum'), nullable=False)
     utilisateur_id = Column(Integer, ForeignKey("utilisateur.id", ondelete="CASCADE"), nullable=False)
 
     utilisateur = relationship("Utilisateur", back_populates="historique_connexions")

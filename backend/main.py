@@ -122,7 +122,7 @@ async def log_performance(request: Request, call_next):
 
 # Routes API v1 
 # Importés ici pour éviter les imports circulaires au démarrage
-from api.v1 import auth, utilisateurs, equipements, metriques, alertes, rapports, websocket # noqa: E402
+from api.v1 import auth, utilisateurs, equipements, metriques, alertes, rapports, websocket, zabbix # noqa: E402
 
 app.include_router(auth.router,         prefix="/api/v1/auth",         tags=["🔐 Authentification"])
 app.include_router(utilisateurs.router, prefix="/api/v1/utilisateurs", tags=["👥 Utilisateurs"])
@@ -131,6 +131,7 @@ app.include_router(metriques.router,    prefix="/api/v1/metriques",    tags=["�
 app.include_router(alertes.router,      prefix="/api/v1/alertes",      tags=["🚨 Alertes"])
 app.include_router(rapports.router,     prefix="/api/v1/rapports",     tags=["📄 Rapports"])
 app.include_router(websocket.router,    prefix="/ws",                  tags=["⚡ WebSocket"])
+app.include_router(zabbix.router,       prefix="/api/v1/zabbix",       tags=["📡 Zabbix"])
 
 
 # Endpoints système 

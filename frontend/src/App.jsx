@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
+import { DashboardProvider } from '@/context/DashboardContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { useAuth } from '@/hooks/useAuth'
 import PrivateRoute from '@/components/Auth/PrivateRoute'
@@ -72,6 +73,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
+    <DashboardProvider>
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
@@ -79,5 +81,6 @@ export default function App() {
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
+  </DashboardProvider>
   )
 }

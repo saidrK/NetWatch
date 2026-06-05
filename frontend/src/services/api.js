@@ -139,4 +139,10 @@ export const rapportsAPI = {
   },
 }
 
+export const zabbixAPI = {
+  resume:   () => api.get("/zabbix/resume"),
+  hosts:    () => api.get("/zabbix/hosts"),
+  problems: () => api.get("/zabbix/problems"),
+}
+
 export default api

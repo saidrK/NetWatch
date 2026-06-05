@@ -195,44 +195,49 @@ async def _generer_csv(rapport: Rapport, db: AsyncSession, file_path: Path):
     result_equipements = await db.execute(select(Equipement))
     equipements = result_equipements.scalars().all()
 
-    with open(file_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
+    with open(file_path, 'w', newline='', encoding='utf-8-sig') as f:
+        writer = csv.writer(f, delimiter=';')
 
         # En-tête
         writer.writerow(['RAPPORT', rapport.titre])
-        writer.writerow(['Période', rapport.periode_debut, 'à', rapport.periode_fin])
-        writer.writerow(['Date génération', rapport.date_generation])
+        writer.writerow(['Periode', rapport.periode_debut.strftime('%d/%m/%Y %H:%M'), 'a', rapport.periode_fin.strftime('%d/%m/%Y %H:%M')])
+        writer.writerow(['Date generation', rapport.date_generation.strftime('%d/%m/%Y %H:%M:%S')])
         writer.writerow([])
 
         # Statistiques
         writer.writerow(['STATISTIQUES'])
-        writer.writerow(['Nombre d\'alertes', len(alertes)])
-        writer.writerow(['Nombre d\'équipements', len(equipements)])
+        writer.writerow(["Nombre d'alertes", len(alertes)])
+        writer.writerow(["Nombre d'equipements", len(equipements)])
         writer.writerow(['Alertes critiques', sum(1 for a in alertes if a.niveau.value == 'CRITIQUE')])
+        writer.writerow(['Alertes WARNING', sum(1 for a in alertes if a.niveau.value == 'WARNING')])
         writer.writerow([])
 
         # Liste des alertes
-        writer.writerow(['ALERTE', 'NIVEAU', 'ÉQUIPEMENT', 'DATE', 'MESSAGE'])
+        writer.writerow(['ID ALERTE', 'NIVEAU', 'EQUIPEMENT ID', 'CPU (%)', 'RAM (%)', 'DATE/HEURE', 'MESSAGE'])
         for alerte in alertes:
             writer.writerow([
                 alerte.id,
                 alerte.niveau.value,
                 alerte.equipement_id or 'N/A',
-                alerte.timestamp,
+                f'{alerte.valeur_cpu:.1f}' if alerte.valeur_cpu else '0.0',
+                f'{alerte.valeur_ram:.1f}' if alerte.valeur_ram else '0.0',
+                alerte.timestamp.strftime('%d/%m/%Y %H:%M:%S'),
                 alerte.message
             ])
 
-        # Liste des équipements
+        # Liste des equipements
         writer.writerow([])
-        writer.writerow(['ÉQUIPEMENTS'])
-        writer.writerow(['ID', 'HOSTNAME', 'IP', 'TYPE', 'STATUT'])
+        writer.writerow(['EQUIPEMENTS'])
+        writer.writerow(['ID', 'HOSTNAME', 'IP', 'TYPE', 'STATUT', 'SEUIL CPU WARNING', 'SEUIL CPU CRITIQUE'])
         for eq in equipements:
             writer.writerow([
                 eq.id,
                 eq.hostname or 'N/A',
                 eq.adresse_ip,
                 eq.type.value if hasattr(eq.type, 'value') else str(eq.type),
-                eq.statut.value if hasattr(eq.statut, 'value') else str(eq.statut)
+                eq.statut.value if hasattr(eq.statut, 'value') else str(eq.statut),
+                eq.seuil_cpu_warning,
+                eq.seuil_cpu_critique,
             ])
 
 
@@ -243,17 +248,24 @@ async def _generer_excel(rapport: Rapport, db: AsyncSession, file_path: Path):
     from models.alerte import Alerte
     from models.equipement import Equipement
 
+    from openpyxl.utils import get_column_letter
+
+    DARK  = "0A1628"
+    MID   = "1E3A5F"
+    CYAN  = "00D4FF"
+    WHITE = "FFFFFF"
+    RED   = "CC2200"
+    YELLOW= "F0A500"
+    GREEN = "00AA55"
+    LGREY = "F2F4F7"
+    MGREY = "D0D7E2"
+
     wb = Workbook()
+
+    # ── Feuille 1 : Résumé ──────────────────────────────────
     ws = wb.active
-    ws.title = "Rapport"
+    ws.title = "Resume"
 
-    # En-tête
-    ws['A1'] = f"RAPPORT: {rapport.titre}"
-    ws['A1'].font = Font(bold=True, size=14)
-    ws['A2'] = f"Période: {rapport.periode_debut} à {rapport.periode_fin}"
-    ws['A3'] = f"Date génération: {rapport.date_generation}"
-
-    # Récupérer les données
     result_alertes = await db.execute(
         select(Alerte).where(
             Alerte.timestamp >= rapport.periode_debut,
@@ -261,68 +273,123 @@ async def _generer_excel(rapport: Rapport, db: AsyncSession, file_path: Path):
         )
     )
     alertes = result_alertes.scalars().all()
-
     result_equipements = await db.execute(select(Equipement))
     equipements = result_equipements.scalars().all()
 
+    nb_critique = sum(1 for a in alertes if a.niveau.value == 'CRITIQUE')
+    nb_warning  = sum(1 for a in alertes if a.niveau.value == 'WARNING')
+    eq_en_ligne = sum(1 for e in equipements if e.statut.value == 'EN_LIGNE')
+
+    def hdr(cell, txt, bg=MID, fg=WHITE, sz=11, bold=True):
+        cell.value = txt
+        cell.font  = Font(bold=bold, color=fg, size=sz)
+        cell.fill  = PatternFill(start_color=bg, end_color=bg, fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    def val(cell, txt, bold=False, color="000000", bg=None):
+        cell.value = txt
+        cell.font  = Font(bold=bold, color=color)
+        if bg:
+            cell.fill = PatternFill(start_color=bg, end_color=bg, fill_type="solid")
+        cell.alignment = Alignment(vertical="center")
+
+    # Titre
+    ws.merge_cells('A1:F1')
+    hdr(ws['A1'], f"NETWATCH — {rapport.titre.upper()}", bg=DARK, sz=14)
+    ws.row_dimensions[1].height = 30
+
+    ws.merge_cells('A2:F2')
+    hdr(ws['A2'], f"Periode: {rapport.periode_debut.strftime('%d/%m/%Y %H:%M')} → {rapport.periode_fin.strftime('%d/%m/%Y %H:%M')}", bg=MID, sz=10)
+
+    ws.merge_cells('A3:F3')
+    hdr(ws['A3'], f"Genere le: {rapport.date_generation.strftime('%d/%m/%Y a %H:%M:%S')} | NetWatch Platform v1.0 — FSBM Hassan II, Casablanca", bg=MID, sz=9)
+    ws.row_dimensions[3].height = 18
+
+    # KPI
     row = 5
-
-    # Statistiques
-    ws[f'A{row}'] = "STATISTIQUES"
-    ws[f'A{row}'].font = Font(bold=True)
-    row += 1
-    ws[f'A{row}'] = "Nombre d'alertes"
-    ws[f'B{row}'] = len(alertes)
-    row += 1
-    ws[f'A{row}'] = "Nombre d'équipements"
-    ws[f'B{row}'] = len(equipements)
-    row += 1
-    ws[f'A{row}'] = "Alertes critiques"
-    ws[f'B{row}'] = sum(1 for a in alertes if a.niveau.value == 'CRITIQUE')
-    row += 2
-
-    # Liste des alertes
-    ws[f'A{row}'] = "ALERTE"
-    ws[f'B{row}'] = "NIVEAU"
-    ws[f'C{row}'] = "ÉQUIPEMENT"
-    ws[f'D{row}'] = "DATE"
-    ws[f'E{row}'] = "MESSAGE"
-    for col in ['A', 'B', 'C', 'D', 'E']:
-        ws[f'{col}{row}'].font = Font(bold=True)
-        ws[f'{col}{row}'].fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
+    ws.merge_cells(f'A{row}:F{row}')
+    hdr(ws[f'A{row}'], "RESUME EXECUTIF", bg=DARK, sz=11)
+    ws.row_dimensions[row].height = 22
     row += 1
 
-    for alerte in alertes:
-        ws[f'A{row}'] = alerte.id
-        ws[f'B{row}'] = alerte.niveau.value
-        ws[f'C{row}'] = alerte.equipement_id or 'N/A'
-        ws[f'D{row}'] = alerte.timestamp
-        ws[f'E{row}'] = alerte.message
+    kpis = [
+        ("Equipements supervises", len(equipements), None),
+        ("Equipements EN LIGNE",   eq_en_ligne,       GREEN if eq_en_ligne == len(equipements) else YELLOW),
+        ("Total alertes",          len(alertes),       None),
+        ("Alertes CRITIQUES",      nb_critique,        RED if nb_critique > 0 else GREEN),
+        ("Alertes WARNING",        nb_warning,         YELLOW if nb_warning > 0 else GREEN),
+    ]
+    for label, valeur, color in kpis:
+        ws[f'A{row}'] = label
+        ws[f'A{row}'].font = Font(bold=True)
+        ws[f'A{row}'].fill = PatternFill(start_color=LGREY, end_color=LGREY, fill_type="solid")
+        c = ws[f'B{row}']
+        c.value = valeur
+        c.font  = Font(bold=True, color=color or "000000")
+        c.alignment = Alignment(horizontal="center")
         row += 1
 
-    row += 1
+    # ── Feuille 2 : Alertes ─────────────────────────────────
+    ws2 = wb.create_sheet("Alertes")
+    ws2.merge_cells('A1:G1')
+    hdr(ws2['A1'], "ANALYSE DES ALERTES", bg=DARK, sz=12)
+    ws2.row_dimensions[1].height = 25
 
-    # Liste des équipements
-    ws[f'A{row}'] = "ÉQUIPEMENTS"
-    ws[f'A{row}'].font = Font(bold=True)
-    row += 1
-    ws[f'A{row}'] = "ID"
-    ws[f'B{row}'] = "HOSTNAME"
-    ws[f'C{row}'] = "IP"
-    ws[f'D{row}'] = "TYPE"
-    ws[f'E{row}'] = "STATUT"
-    for col in ['A', 'B', 'C', 'D', 'E']:
-        ws[f'{col}{row}'].font = Font(bold=True)
-        ws[f'{col}{row}'].fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
-    row += 1
+    hdrs2 = ['ID', 'NIVEAU', 'EQUIPEMENT ID', 'CPU (%)', 'RAM (%)', 'DATE/HEURE', 'MESSAGE']
+    for i, h in enumerate(hdrs2, 1):
+        c = ws2.cell(row=2, column=i)
+        hdr(c, h, bg=MID)
 
-    for eq in equipements:
-        ws[f'A{row}'] = eq.id
-        ws[f'B{row}'] = eq.hostname or 'N/A'
-        ws[f'C{row}'] = eq.adresse_ip
-        ws[f'D{row}'] = eq.type.value if hasattr(eq.type, 'value') else str(eq.type)
-        ws[f'E{row}'] = eq.statut.value if hasattr(eq.statut, 'value') else str(eq.statut)
-        row += 1
+    for row_i, alerte in enumerate(alertes, 3):
+        bg = "FFE8E8" if alerte.niveau.value == 'CRITIQUE' else ("FFFDE8" if alerte.niveau.value == 'WARNING' else None)
+        data = [
+            alerte.id,
+            alerte.niveau.value,
+            alerte.equipement_id or 'N/A',
+            round(alerte.valeur_cpu, 1) if alerte.valeur_cpu else 0.0,
+            round(alerte.valeur_ram, 1) if alerte.valeur_ram else 0.0,
+            alerte.timestamp.strftime('%d/%m/%Y %H:%M:%S'),
+            alerte.message,
+        ]
+        for col_i, v in enumerate(data, 1):
+            c = ws2.cell(row=row_i, column=col_i, value=v)
+            if bg:
+                c.fill = PatternFill(start_color=bg, end_color=bg, fill_type="solid")
+            c.alignment = Alignment(vertical="center")
+
+    # ── Feuille 3 : Equipements ─────────────────────────────
+    ws3 = wb.create_sheet("Equipements")
+    ws3.merge_cells('A1:G1')
+    hdr(ws3['A1'], "INVENTAIRE DES EQUIPEMENTS", bg=DARK, sz=12)
+    ws3.row_dimensions[1].height = 25
+
+    hdrs3 = ['ID', 'HOSTNAME', 'IP', 'TYPE', 'STATUT', 'SEUIL CPU WARN', 'SEUIL CPU CRIT']
+    for i, h in enumerate(hdrs3, 1):
+        c = ws3.cell(row=2, column=i)
+        hdr(c, h, bg=MID)
+
+    for row_i, eq in enumerate(equipements, 3):
+        statut = eq.statut.value if hasattr(eq.statut, 'value') else str(eq.statut)
+        bg = "E8FFE8" if statut == 'EN_LIGNE' else "FFE8E8"
+        data = [
+            eq.id,
+            eq.hostname or 'N/A',
+            eq.adresse_ip,
+            eq.type.value if hasattr(eq.type, 'value') else str(eq.type),
+            statut,
+            eq.seuil_cpu_warning,
+            eq.seuil_cpu_critique,
+        ]
+        for col_i, v in enumerate(data, 1):
+            c = ws3.cell(row=row_i, column=col_i, value=v)
+            c.fill = PatternFill(start_color=bg, end_color=bg, fill_type="solid")
+            c.alignment = Alignment(vertical="center")
+
+    # Largeurs colonnes
+    for ws_sheet in [ws, ws2, ws3]:
+        for col in ws_sheet.columns:
+            max_len = max((len(str(c.value)) for c in col if c.value), default=10)
+            ws_sheet.column_dimensions[get_column_letter(col[0].column)].width = min(max_len + 4, 40)
 
     wb.save(file_path)
 

@@ -139,7 +139,7 @@ async def _pipeline_collecte(db: AsyncSession, influx: InfluxDBService):
 
             # Notifier si alerte créée
             if alerte:
-                await notif.envoyer(db, alerte)
+                await notif.envoyer_tache_fond(alerte)
 
         except Exception as e:
             import logging

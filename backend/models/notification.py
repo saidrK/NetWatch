@@ -15,7 +15,7 @@ class Notification(Base):
     __tablename__ = "notification"
 
     id           = Column(Integer, primary_key=True, index=True)
-    canal        = Column(SAEnum(Canal), nullable=False)
+    canal        = Column(SAEnum(Canal, name='canal_enum'), nullable=False)
     destinataire = Column(String(255), nullable=False)
     contenu      = Column(Text, nullable=False)
     envoye       = Column(Boolean, default=False, nullable=False)
