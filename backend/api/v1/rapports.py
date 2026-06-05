@@ -158,8 +158,8 @@ async def _generer_fichier(rapport_id: int):
             return
 
         try:
-            Path("/tmp").mkdir(exist_ok=True)
-            file_path = Path(f"/tmp/rapport_{rapport_id}.{rapport.format.value.lower()}")
+            Path("/app/rapports").mkdir(exist_ok=True)
+            file_path = Path(f"/app/rapports/rapport_{rapport_id}.{rapport.format.value.lower()}")
 
             if rapport.format == FormatRapport.CSV:
                 await _generer_csv(rapport, db, file_path)
@@ -199,6 +199,7 @@ async def _generer_csv(rapport: Rapport, db: AsyncSession, file_path: Path):
         writer = csv.writer(f, delimiter=';')
 
         # En-tête
+        writer.writerow(['sep=;'])
         writer.writerow(['RAPPORT', rapport.titre])
         writer.writerow(['Periode', rapport.periode_debut.strftime('%d/%m/%Y %H:%M'), 'a', rapport.periode_fin.strftime('%d/%m/%Y %H:%M')])
         writer.writerow(['Date generation', rapport.date_generation.strftime('%d/%m/%Y %H:%M:%S')])
@@ -424,8 +425,8 @@ async def _generer_pdf(rapport: Rapport, db: AsyncSession, file_path: Path):
     LIGHT_GREY = colors.HexColor('#f2f4f7')
     MED_GREY = colors.HexColor('#d0d7e2')
 
-    s_title = ParagraphStyle('Title', fontSize=26, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_CENTER)
-    s_sub = ParagraphStyle('Sub', fontSize=12, textColor=CYAN, fontName='Helvetica', alignment=TA_CENTER, spaceAfter=6)
+    s_title = ParagraphStyle('Title', fontSize=26, textColor=colors.HexColor('#00d4ff'), fontName='Helvetica-Bold', alignment=TA_CENTER)
+    s_sub = ParagraphStyle('Sub', fontSize=12, textColor=colors.HexColor('#00d4ff'), fontName='Helvetica', alignment=TA_CENTER, spaceAfter=6)
     s_h1 = ParagraphStyle('H1', fontSize=14, textColor=DARK_BLUE, fontName='Helvetica-Bold', spaceBefore=15, spaceAfter=10)
     s_body = ParagraphStyle('Body', fontSize=10, textColor=colors.black, fontName='Helvetica', spaceAfter=6, leading=14)
 
@@ -544,3 +545,70 @@ async def _generer_pdf(rapport: Rapport, db: AsyncSession, file_path: Path):
     story.append(Paragraph("NetWatch Platform v1.0 • PFE 2025/2026 — FSBM, Casablanca", ParagraphStyle('Footer', fontSize=7, textColor=colors.grey, alignment=TA_CENTER)))
 
     doc.build(story)
+
+
+# GET /rapports/storage — taille du stockage /tmp
+@router.get("/storage", summary="Taille stockage rapports")
+async def storage_info(
+    _: Utilisateur = Depends(get_current_user),
+):
+    tmp = Path("/app/rapports")
+    tmp.mkdir(exist_ok=True)
+    fichiers = list(tmp.glob("rapport_*"))
+    taille_bytes = sum(f.stat().st_size for f in fichiers if f.exists())
+    taille_mb = round(taille_bytes / (1024 * 1024), 2)
+    return {
+        "taille_mb": taille_mb,
+        "nb_fichiers": len(fichiers),
+        "max_mb": 1024,
+        "pourcentage": round((taille_mb / 1024) * 100, 2)
+    }
+
+
+# GET /rapports/export-global — ZIP de tous les rapports
+import zipfile
+from fastapi.responses import StreamingResponse
+
+@router.get("/export-global", summary="Exporter tous les rapports en ZIP")
+async def export_global(
+    _: Utilisateur = Depends(get_current_user),
+):
+    tmp = Path("/app/rapports")
+    fichiers = list(tmp.glob("rapport_*"))
+    fichiers = [f for f in fichiers if f.exists()]
+
+    if not fichiers:
+        raise HTTPException(status_code=404, detail="Aucun rapport disponible")
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in fichiers:
+            zf.write(f, f.name)
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=rapports_netwatch.zip"}
+    )
+
+
+# DELETE /rapports/{id} — supprimer un rapport
+@router.delete("/{id}", summary="Supprimer un rapport")
+async def supprimer_rapport(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    _: Utilisateur = Depends(get_current_user),
+):
+    result = await db.execute(select(Rapport).where(Rapport.id == id))
+    rapport = result.scalar_one_or_none()
+    if not rapport:
+        raise HTTPException(status_code=404, detail="Rapport non trouvé")
+    # Supprimer le fichier physique si existe
+    if rapport.chemin_fichier:
+        f = Path(rapport.chemin_fichier)
+        if f.exists():
+            f.unlink()
+    await db.delete(rapport)
+    await db.commit()
+    return {"message": f"Rapport #{id} supprimé"}

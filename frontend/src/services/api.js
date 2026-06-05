@@ -82,6 +82,7 @@ export const equipementsAPI = {
   lister: (params) => api.get('/equipements/', { params }),
   get: (id) => api.get(`/equipements/${id}`),
   scanner: (plage, signal) => api.post('/equipements/scan', { plage }, { timeout: 120000, signal }),
+  isoler: (id) => api.delete(`/equipements/${id}`),
 }
 
 // — Métriques
@@ -111,6 +112,8 @@ export const rapportsAPI = {
   generer: (data) => api.post('/rapports/generer', data),
   get: (id) => api.get(`/rapports/${id}`),
   supprimer: (id) => api.delete(`/rapports/${id}`),
+  storage: () => api.get('/rapports/storage'),
+  exportGlobal: () => api.get('/rapports/export-global', { responseType: 'blob' }),
   /**
    * Télécharge un rapport et déclenche le téléchargement navigateur.
    * Utilise responseType: 'blob' pour recevoir le binaire (PDF/Excel/CSV).

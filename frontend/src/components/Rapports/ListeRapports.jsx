@@ -8,7 +8,7 @@ export default function ListeRapports() {
   const [loading, setLoading] = useState(true)
   const [exportLogged, setExportLogged] = useState(null)
   const [isExporting, setIsExporting] = useState(null)
-  const { user } = useAuth() // needed to check if admin for delete if needed, though we'll mock or implement delete action logic
+  const { user, isAdmin } = useAuth() // needed to check if admin for delete if needed, though we'll mock or implement delete action logic
 
   const fetchRapports = async () => {
     setLoading(true)
@@ -39,12 +39,9 @@ export default function ListeRapports() {
   }
 
   const handleSupprimer = async (id) => {
-    if (!window.confirm("CONFIRMATION REQUISE: SUPPRIMER CET ENREGISTREMENT ?")) return;
     try {
-      // Si on a l'API de suppression, on l'appelle. 
-      // await rapportsAPI.supprimer(id) 
-      // Mais dans le code initial, supprimer n'y était pas explicitement dans handle, bien que l'utilisateur le demande.
-      setRapports(rapports.filter(r => r.id !== id))
+      await rapportsAPI.supprimer(id)
+      setRapports(prev => prev.filter(r => r.id !== id))
     } catch (error) {
       console.error('Erreur suppression rapport:', error)
     }
@@ -124,7 +121,7 @@ export default function ListeRapports() {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {user?.role === 'admin' && (
+                    {isAdmin && (
                       <button
                         onClick={() => handleSupprimer(rapport.id)}
                         className="border border-red-800 text-red-700 text-[10px] font-mono px-2 py-1 hover:border-red-500 hover:text-red-500 transition-colors rounded-none cursor-pointer"

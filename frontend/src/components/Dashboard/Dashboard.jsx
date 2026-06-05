@@ -199,7 +199,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#222] pb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-widest uppercase font-mono mb-1 flex items-center gap-3">
-            MISSION_CONTROL
+            NETWATCH_DASHBOARD
             <span className="text-xs text-gray-600 border border-[#222] px-2 py-0.5 font-normal">v2.0</span>
           </h2>
           <p className="text-xs text-[#888] font-mono uppercase tracking-wider">

@@ -133,12 +133,17 @@ async def _pipeline_collecte(db: AsyncSession, influx: InfluxDBService):
 
             # Écrire dans InfluxDB
             await influx.ecrire(metrique)
+            # Mettre à jour dernier_vu
+            from datetime import datetime
+            eq.dernier_vu = datetime.utcnow()
+            db.add(eq)
 
             # Analyser avec IA
             alerte = await ia.analyser_et_alerter(db, metrique)
 
             # Notifier si alerte créée
             if alerte:
+                await db.commit()
                 await notif.envoyer_tache_fond(alerte)
 
         except Exception as e:

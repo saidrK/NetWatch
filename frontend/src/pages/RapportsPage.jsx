@@ -16,6 +16,8 @@ export default function RapportsPage() {
   const [refreshKey,        setRefreshKey]       = useState(0)
   const [rapportCount,      setRapportCount]     = useState(null)
   const [rapportHistory,    setRapportHistory]   = useState([])
+  const [storage,           setStorage]          = useState(null)
+  const [exporting,         setExporting]        = useState(false)
 
   // ── Historique rapports ──────────────
   const fetchRapports = useCallback(async () => {
@@ -53,6 +55,15 @@ export default function RapportsPage() {
     fetchRapports()
   }, [fetchRapports])
 
+  const fetchStorage = async () => {
+    try {
+      const { data } = await rapportsAPI.storage()
+      setStorage(data)
+    } catch { setStorage(null) }
+  }
+
+  useEffect(() => { fetchStorage() }, [refreshKey])
+
   const handleRapportGenere = () => {
     setRefreshKey(prev => prev + 1)
     fetchRapports()
@@ -72,11 +83,22 @@ export default function RapportsPage() {
           </p>
         </div>
         <button
-          className="border border-[#00FFD1] text-[#00FFD1] font-mono text-xs uppercase px-4 py-2 hover:bg-[#00FFD1] hover:text-black transition-all flex items-center gap-2 opacity-40 cursor-not-allowed"
-          disabled
+          className="border border-[#00FFD1] text-[#00FFD1] font-mono text-xs uppercase px-4 py-2 hover:bg-[#00FFD1] hover:text-black transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={exporting}
+          onClick={async () => {
+            setExporting(true)
+            try {
+              const { data } = await rapportsAPI.exportGlobal()
+              const url = URL.createObjectURL(new Blob([data], { type: 'application/zip' }))
+              const a = document.createElement('a')
+              a.href = url; a.download = 'rapports_netwatch.zip'; a.click()
+              URL.revokeObjectURL(url)
+            } catch(e) { alert('Aucun rapport disponible ou erreur serveur') }
+            finally { setExporting(false) }
+          }}
         >
           <Download className="w-4 h-4" />
-          EXPORT GLOBAL
+          {exporting ? 'EXPORT...' : 'EXPORT GLOBAL'}
         </button>
       </div>
 
@@ -136,10 +158,10 @@ export default function RapportsPage() {
             <HardDrive className="w-3 h-3" /> /TMP_STORAGE
           </div>
           <div className="w-full bg-[#111] h-1.5 mb-2 mt-2">
-            <div className="bg-[#00FFD1] h-1.5 w-1/3"></div>
+            <div className="bg-[#00FFD1] h-1.5" style={{ width: storage ? `${Math.min(storage.pourcentage, 100)}%` : '0%' }}></div>
           </div>
           <div className="flex justify-between items-center text-[10px] font-mono uppercase border-t border-[#222] pt-2 mt-1">
-            <span className="text-white">45.2 MB</span>
+            <span className="text-white">{storage ? `${storage.taille_mb} MB` : '-'}</span>
             <span className="text-gray-600">1.0 GB MAX</span>
           </div>
         </div>

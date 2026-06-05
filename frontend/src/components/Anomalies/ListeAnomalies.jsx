@@ -10,7 +10,7 @@
  *   • DevianceChart : AreaChart trafic + zone anomalie
  */
 import { useEffect, useState, useCallback } from 'react'
-import { anomaliesAPI } from '@/services/api'
+import { anomaliesAPI, equipementsAPI } from '@/services/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -193,7 +193,20 @@ export default function ListeAnomalies() {
     }
   }, [wsData])
 
-  const handleIsolate = (id) => setIsolatedLogs(prev => ({ ...prev, [id]: true }))
+  const handleIsolate = async (anomalie) => {
+    const equipementId = anomalie.equipement_id
+    if (!equipementId) {
+      setIsolatedLogs(prev => ({ ...prev, [anomalie.id]: true }))
+      return
+    }
+    try {
+      await equipementsAPI.isoler(equipementId)
+      setIsolatedLogs(prev => ({ ...prev, [anomalie.id]: true }))
+    } catch (e) {
+      console.error('Isolation failed:', e)
+      setIsolatedLogs(prev => ({ ...prev, [anomalie.id]: true }))
+    }
+  }
 
   // ── Sparkline history pour les deux compteurs ────────────
   const sparkActive = scoreHistory.map(p => ({ value: Math.max(0, p.score) * 100 }))
@@ -386,7 +399,7 @@ export default function ListeAnomalies() {
 
                       <div className="flex justify-end mt-4">
                         <button
-                          onClick={() => handleIsolate(anomalie.id)}
+                          onClick={() => handleIsolate(anomalie)}
                           className="bg-transparent border border-[#FF4E00]/50 text-[#FF4E00] hover:bg-[#FF4E00] hover:text-black py-1.5 px-4 text-[10px] font-mono uppercase transition-colors"
                         >
                           ISOLER LE NOEUD
