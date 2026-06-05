@@ -194,13 +194,13 @@ COMMENT ON COLUMN notification.destinataire IS 'Chat ID Telegram ou adresse emai
 -- ============================================================
 CREATE TABLE rapport (
     id              SERIAL      PRIMARY KEY,
-    utilisateur_id  INTEGER     NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
     titre           VARCHAR(255) NOT NULL,
     periode_debut   TIMESTAMP   NOT NULL,
     periode_fin     TIMESTAMP   NOT NULL,
     format          format_rapport_enum NOT NULL,
     chemin_fichier  VARCHAR(500) NULL,
-    date_generation TIMESTAMP   NOT NULL DEFAULT NOW()
+    date_generation TIMESTAMP   NOT NULL DEFAULT NOW(),
+    auteur_id       INTEGER     NULL REFERENCES utilisateur(id) ON DELETE SET NULL
 );
 
 -- Modification la table rapport

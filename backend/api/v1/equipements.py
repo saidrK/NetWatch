@@ -1,8 +1,9 @@
 """
-— Routes équipements réseau
-GET  /equipements          → liste tous les équipements
-GET  /equipements/{id}     → détail + ports
-POST /equipements/scan     → lancer scan Nmap (Admin)
+api/v1/equipements.py — Routes équipements réseau
+GET    /equipements          → liste tous les équipements actifs
+GET    /equipements/{id}     → détail + ports
+POST   /equipements/scan     → lancer scan Nmap (Admin)
+DELETE /equipements/{id}     → soft delete (Admin)
 """
 from typing import Optional
 from datetime import datetime
@@ -22,7 +23,7 @@ from api.v1.utilisateurs import get_current_user, admin_requis
 router = APIRouter()
 
 
-# Schémas Pydantic
+# ── Schémas Pydantic ──────────────────────────────────────────────────────────
 class PortResponse(BaseModel):
     id:        int
     numero:    int
@@ -42,10 +43,10 @@ class EquipementResponse(BaseModel):
     hostname:    Optional[str]
     type:        str
     statut:      str
-    statut:      Optional[str] = None
     os_detecte:  Optional[str] = None
     dernier_vu:  Optional[datetime]
     created_at:  datetime
+    is_active:   bool
 
     class Config:
         from_attributes = True
@@ -56,7 +57,7 @@ class EquipementDetailResponse(EquipementResponse):
 
 
 class ScanRequest(BaseModel):
-    plage: Optional[str] = None   # ex: 192.168.1.0/24 — défaut depuis .env
+    plage: Optional[str] = None
 
 
 class ScanResponse(BaseModel):
@@ -67,12 +68,11 @@ class ScanResponse(BaseModel):
     ports_sauvegardes:       int
 
 
-# GET /equipements — liste 
+# ── GET /equipements ──────────────────────────────────────────────────────────
 @router.get(
     "/",
-    response_model=list[EquipementResponse],
-    summary="Liste tous les équipements",
-    description="Retourne l'inventaire réseau complet. Accessible Admin + Technicien."
+    response_model=list[EquipementDetailResponse],
+    summary="Liste tous les équipements actifs",
 )
 async def lister_equipements(
     statut: Optional[str] = None,
@@ -80,7 +80,7 @@ async def lister_equipements(
     db: AsyncSession = Depends(get_db),
     _: Utilisateur = Depends(get_current_user),
 ):
-    query = select(Equipement).order_by(Equipement.adresse_ip)
+    query = select(Equipement).options(selectinload(Equipement.ports)).where(Equipement.is_active == True).order_by(Equipement.adresse_ip)
 
     if statut:
         query = query.where(Equipement.statut == statut)
@@ -91,11 +91,11 @@ async def lister_equipements(
     return result.scalars().all()
 
 
-# GET /equipements/{id} — détail + ports
+# ── GET /equipements/{id} ─────────────────────────────────────────────────────
 @router.get(
     "/{equipement_id}",
     response_model=EquipementDetailResponse,
-    summary="Détail d'un équipement + ses ports",
+    summary="Détail d'un équipement actif",
 )
 async def get_equipement(
     equipement_id: int,
@@ -106,19 +106,19 @@ async def get_equipement(
         select(Equipement)
         .options(selectinload(Equipement.ports))
         .where(Equipement.id == equipement_id)
+        .where(Equipement.is_active == True)
     )
     eq = result.scalar_one_or_none()
     if not eq:
-        raise HTTPException(status_code=404, detail="Équipement introuvable")
+        raise HTTPException(status_code=404, detail="Équipement introuvable ou supprimé")
     return eq
 
 
-# POST /equipements/scan — lancer scan Nmap
+# ── POST /equipements/scan ────────────────────────────────────────────────────
 @router.post(
     "/scan",
     response_model=ScanResponse,
     summary="Lancer un scan réseau Nmap (Admin)",
-    description="Lance un scan Nmap sur la plage IP et met à jour l'inventaire. (BF02)"
 )
 async def scan_reseau(
     body: ScanRequest,
@@ -131,3 +131,31 @@ async def scan_reseau(
         return ScanResponse(**resultats)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── DELETE /equipements/{id} (Soft Delete) ────────────────────────────────────
+@router.delete(
+    "/{equipement_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Suppression logique d'un équipement (Admin)",
+    description="Soft-delete: met `is_active=False` et conserve l'historique InfluxDB.",
+)
+async def supprimer_equipement(
+    equipement_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: Utilisateur = Depends(admin_requis),
+):
+    result = await db.execute(
+        select(Equipement).where(Equipement.id == equipement_id).where(Equipement.is_active == True)
+    )
+    eq = result.scalar_one_or_none()
+    
+    if not eq:
+        raise HTTPException(status_code=404, detail="Équipement introuvable ou déjà supprimé")
+
+    # Soft delete pour préserver les TSDB (Influx) et les logs
+    eq.is_active = False
+    eq.deleted_at = datetime.utcnow()
+    
+    await db.flush()
+    return None

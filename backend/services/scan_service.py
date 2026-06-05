@@ -52,7 +52,7 @@ async def lancer_scan(
 
     nm = nmap.PortScanner()
     try:
-        nm.scan(hosts=plage, arguments="-sV -T4 --open")
+        nm.scan(hosts=plage, arguments="-sV -T4 --open --host-timeout 30s")
     except Exception as e:
         logger.error(f"❌ Nmap error: {e}")
         raise RuntimeError(f"Erreur Nmap : {e}")
@@ -125,7 +125,7 @@ async def lancer_scan(
                     numero=p["numero"],
                     protocole=p["protocole"],
                     service=p["service"],
-                    service_version=p["version"],
+                    service_version=p["service_version"],
                     ouvert=True,
                 ))
 

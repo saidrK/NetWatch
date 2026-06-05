@@ -17,7 +17,7 @@ class Alerte(Base):
 
     id              = Column(Integer, primary_key=True, index=True)
     message         = Column(String(500), nullable=False)
-    niveau          = Column(SAEnum(NiveauAlerte), nullable=False, index=True)
+    niveau          = Column(SAEnum(NiveauAlerte, name='niveau_alerte_enum'), nullable=False, index=True)
     score_anomalie  = Column(Float, nullable=False)
     valeur_cpu       = Column(Float, nullable=False)
     valeur_ram       = Column(Float, nullable=False)

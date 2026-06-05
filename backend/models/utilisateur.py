@@ -19,7 +19,7 @@ class Utilisateur(Base):
     email              = Column(String(255), unique=True, nullable=False, index=True)
     mot_de_passe_hash  = Column(String(255), nullable=False)
     actif              = Column(Boolean, default=True, nullable=False)
-    role               = Column(SAEnum(RoleUtilisateur), nullable=False)
+    role               = Column(SAEnum(RoleUtilisateur, name="role_enum"), nullable=False)
     derniere_connexion = Column(DateTime, nullable=True)
     created_at         = Column(DateTime, default=datetime.utcnow, nullable=False)
 
