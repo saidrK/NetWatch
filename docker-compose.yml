@@ -16,7 +16,7 @@ services:
   # COUCHE PHYSIQUE / COLLECTE
   # ─────────────────────────────────────────────────────
 
-  # PostgreSQL — port 5433 (comme dans ton .env)
+  # PostgreSQL — port 5433 (comme dans .env)
   postgres:
     image: postgres:15-alpine
     container_name: supervision_postgres
