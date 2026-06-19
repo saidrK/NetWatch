@@ -9,7 +9,7 @@ import {
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
-  Heart,
+  Activity,
   LayoutDashboard,
   Server,
   AlertTriangle,
@@ -130,9 +130,9 @@ export default function AppLayout() {
             className="border border-[#222] p-1 bg-[#050505]"
           />
           <div className="flex items-center gap-2 md:gap-3">
-            <Heart className="w-5 h-5 text-[#00FFD1] fill-[#00FFD1]/10 animate-pulse" />
+            <Activity className="w-5 h-5 text-[#00FFD1] animate-pulse" />
             <h1 className="text-sm md:text-[15px] font-bold text-white tracking-[0.25em] uppercase flex items-center gap-1 m-0">
-              MISSION_CONTROL<span className="text-[#00FFD1] text-xs">_v1.0.4</span>
+              NETWATCH<span className="text-[#00FFD1] text-xs">_v1.0.4</span>
             </h1>
             {connected ? (
               <span className="hidden sm:inline-block border border-[#00FFD1]/50 text-[#00FFD1] bg-[#00FFD1]/10 text-[8.5px] px-1.5 py-0.5 font-bold tracking-wider">
@@ -169,16 +169,50 @@ export default function AppLayout() {
       <AppShell.Navbar p="0" className="flex flex-col justify-between border-none">
         <div className="p-4 flex flex-col gap-6">
           {/* Quick Session Overview badge */}
-          <div className="bg-[#050505] border border-[#222] p-3 text-[11px] text-[#888] flex flex-col gap-1.5 select-none">
-            <div className="flex items-center gap-1 w-full text-white font-bold opacity-80 text-[10px] tracking-wider uppercase border-b border-[#222] pb-1">
-              <MonitorCheck className="w-4 h-4 text-[#00FFD1]" />
-              INFRA_FSBM_CASABLANCA
+          <div className="bg-[#080c10] border border-[#00FFD1]/20 p-3 text-[11px] flex flex-col gap-2 select-none relative overflow-hidden">
+            {/* Tête de la carte */}
+            <div className="flex justify-between items-center w-full border-b border-[#00FFD1]/20 pb-2">
+              <div className="flex items-center gap-1.5 text-[#E0E0E0] font-bold text-[10px] tracking-widest uppercase">
+                <MonitorCheck className="w-3.5 h-3.5 text-[#00FFD1]" />
+                INFRA_FSBM_CASA
+              </div>
+              <div className="flex items-center gap-1 text-[#00FFD1] text-[8px] bg-[#00FFD1]/10 px-1 py-0.5 rounded-none border border-[#00FFD1]/30">
+                <span className="w-1 h-1 rounded-full bg-[#00FFD1] animate-pulse"></span>
+                SYNC
+              </div>
             </div>
-            <p className="m-0">Hôte: <strong className="text-[#00FFD1] select-all">192.168.1.103</strong></p>
-            <p className="m-0">Rôle: <strong className="text-white">{user?.role}</strong></p>
-            <p className="m-0">Scan Nmap: <strong className={isScanning ? 'text-[#FFD700]' : 'text-[#666]'}>
-              {isScanning ? 'EN COURS...' : 'STANDBY'}
-            </strong></p>
+
+            {/* Grille d'informations réseau */}
+            <div className="grid grid-cols-2 gap-x-2 gap-y-3 mt-1">
+              <div className="flex flex-col">
+                <span className="text-[#555] text-[9px] uppercase tracking-wider">Passerelle</span>
+                <span className="text-[#00FFD1] font-bold font-mono tracking-wide">192.168.1.1</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[#555] text-[9px] uppercase tracking-wider">Sous-réseau</span>
+                <span className="text-white font-bold font-mono tracking-wide">192.168.1.0/24</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[#555] text-[9px] uppercase tracking-wider">Agent NMAP</span>
+                <span className={`font-bold font-mono flex items-center gap-1 ${isScanning ? 'text-[#FFD700] animate-pulse' : 'text-[#666]'}`}>
+                  {isScanning ? 'SCAN ACTIF' : 'STANDBY'}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[#555] text-[9px] uppercase tracking-wider">Latence</span>
+                <span className="text-green-400 font-bold font-mono flex items-center gap-1">
+                  12ms <Activity className="w-3 h-3 text-green-500" />
+                </span>
+              </div>
+            </div>
+
+            {/* Pied de la carte (Privilèges) */}
+            <div className="mt-1 pt-2 border-t border-[#00FFD1]/20 flex justify-between items-center text-[9px]">
+               <span className="text-[#555] uppercase tracking-wider">Niveau d'Accès</span>
+               <span className={`font-bold uppercase tracking-wider ${user?.role === 'ADMINISTRATEUR' || user?.role === 'ADMIN' ? 'text-[#FFD700]' : 'text-blue-400'}`}>
+                 {user?.role || 'TECHNICIEN'}
+               </span>
+            </div>
           </div>
 
           <ScrollArea type="never" className="flex-1">

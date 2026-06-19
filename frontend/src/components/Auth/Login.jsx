@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Terminal, Shield, LogIn, Award, Users, Loader2 } from 'lucide-react'
+import { Terminal, Shield, LogIn, Award, Users, Loader2, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function Login() {
@@ -9,6 +9,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const [erreur, setErreur] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   // Intercepter le message de déconnexion (401/Invalidation)
   // ✅ import statique + useEffect dans le corps du composant (Rules of Hooks)
@@ -102,18 +103,29 @@ export default function Login() {
               <Shield className="w-3 h-3 text-[#00FFD1]" />
               Clé d'accès securisée (Password)
             </label>
-            <input
-              type="password"
-              id="login-password"
-              value={motDePasse}
-              onChange={(e) => setMotDePasse(e.target.value)}
-              placeholder="••••••••"
-              disabled={loading}
-              className="cyber-input"
-              aria-label="Mot de passe"
-              aria-required="true"
-              autoComplete="current-password"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="login-password"
+                value={motDePasse}
+                onChange={(e) => setMotDePasse(e.target.value)}
+                placeholder="••••••••"
+                disabled={loading}
+                className="cyber-input w-full pr-10"
+                aria-label="Mot de passe"
+                aria-required="true"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#00FFD1] transition-colors focus:outline-none"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {erreur && (

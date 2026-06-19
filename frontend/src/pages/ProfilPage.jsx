@@ -159,12 +159,12 @@ export default function ProfilPage() {
                 </div>
               </div>
 
-              {/* Signature */}
+              {/* Intégrité Système */}
               <div>
-                <div className="text-gray-600 text-xs font-mono uppercase mb-2">Statut PFE</div>
+                <div className="text-gray-600 text-xs font-mono uppercase mb-2">Intégrité Système</div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  <span className="text-green-400 text-sm font-mono">VALIDÉ</span>
+                  <Shield className="w-4 h-4 text-green-500" />
+                  <span className="text-green-400 text-sm font-mono">VÉRIFIÉE</span>
                 </div>
               </div>
             </div>
