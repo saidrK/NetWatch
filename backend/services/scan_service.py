@@ -119,6 +119,8 @@ async def lancer_scan(
             for p in old_ports.scalars():
                 await db.delete(p)
 
+            await db.flush()
+
             for p in ports_list:
                 db.add(Port(
                     equipement_id=eq.id,
