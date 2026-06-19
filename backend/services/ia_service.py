@@ -54,13 +54,34 @@ def _classifier_niveau(score: float) -> NiveauAlerte:
       score > -0.3  -> WARNING
       score ≤ -0.3  -> CRITIQUE
     """
-    if score > -0.1:
+   """ if score > -0.1:
         return NiveauAlerte.NORMAL
     elif score > -0.3:
         return NiveauAlerte.WARNING
     else:
         return NiveauAlerte.CRITIQUE
+   """
+   # juste pour le teste
+    if score > -0.05:
+        return NiveauAlerte.NORMAL
+    elif score > -0.15:
+        return NiveauAlerte.WARNING
+    else:
+        return NiveauAlerte.CRITIQUE
 
+def _classifier_niveau_normalise(score: float) -> NiveauAlerte:
+    """
+    Score normalisé sur [-1, +1] :
+       score < 0  -> NORMAL
+       0 < score < 0.5 -> WARNING
+       score >= 0.5 -> CRITIQUE
+    """
+    if score < 0:
+	return NiveauAlerte.NORMAL
+    elif score < 0.5:
+	return NiveauAlerte.WARNING
+    else:
+	return NiveauAlerte.CRITIQUE
 
 # Service IA
 class IAService:
@@ -114,9 +135,15 @@ class IAService:
         """
         try:
             X = np.array([_metrique_to_vector(metrique)])
-            score = float(self.model.score_samples(X)[0])
-            niveau = _classifier_niveau(score)
-            return niveau, score
+            # score = float(self.model.score_samples(X)[0])
+	    raw_score = float(self.model.score_samples(X)[0])
+            # Normaliser : Isolation Forest donne [-0.5, 0]
+            # On mappe vers [-1, +1] pour le frontend
+            # Plus le score brut est négatif → plus anormal → score normalisé positif
+            score_normalise = -raw_score * 4.0
+            score_normalise = max(-1.0, min(1.0, score_normalise))
+            niveau = _classifier_niveau(score_normalise)
+            return niveau, score_normalise
         except Exception:
             # Modèle pas encore entraîné → seuils fixes de secours
             return self._analyser_seuils_fixes(metrique), 0.0

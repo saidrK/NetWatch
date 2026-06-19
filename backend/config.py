@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     prometheus_url: str = "http://localhost:9090"
 
     # IA (Isolation Forest)
-    ia_contamination: float = 0.05
+    # ia_contamination: float = 0.05
+    ia_contamination: float = 0.20
 
     # Telegram 
     telegram_token: str   = ""

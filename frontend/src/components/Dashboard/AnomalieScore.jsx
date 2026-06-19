@@ -11,7 +11,8 @@ const CYAN      = '#00FFD1'
 const RED       = '#FF4E00'
 const YELLOW    = '#FFD700'
 const GREEN     = '#00ff88'
-const THRESHOLD = 0.5
+# const THRESHOLD = 0.5
+const THRESHOLD = 0.3
 
 function getScoreColor(score) {
   if (score === null || score === undefined) return '#555'
