@@ -54,14 +54,15 @@ def _classifier_niveau(score: float) -> NiveauAlerte:
       score > -0.3  -> WARNING
       score ≤ -0.3  -> CRITIQUE
     """
-   """ if score > -0.1:
+    """
+    if score > -0.1:
         return NiveauAlerte.NORMAL
     elif score > -0.3:
         return NiveauAlerte.WARNING
     else:
         return NiveauAlerte.CRITIQUE
-   """
-   # juste pour le teste
+    """
+    # juste pour le teste
     if score > -0.05:
         return NiveauAlerte.NORMAL
     elif score > -0.15:
