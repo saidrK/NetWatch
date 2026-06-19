@@ -78,11 +78,11 @@ def _classifier_niveau_normalise(score: float) -> NiveauAlerte:
        score >= 0.5 -> CRITIQUE
     """
     if score < 0:
-	return NiveauAlerte.NORMAL
+        return NiveauAlerte.NORMAL
     elif score < 0.5:
-	return NiveauAlerte.WARNING
+        return NiveauAlerte.WARNING
     else:
-	return NiveauAlerte.CRITIQUE
+        return NiveauAlerte.CRITIQUE
 
 # Service IA
 class IAService:
@@ -137,7 +137,7 @@ class IAService:
         try:
             X = np.array([_metrique_to_vector(metrique)])
             # score = float(self.model.score_samples(X)[0])
-	    raw_score = float(self.model.score_samples(X)[0])
+            raw_score = float(self.model.score_samples(X)[0])
             # Normaliser : Isolation Forest donne [-0.5, 0]
             # On mappe vers [-1, +1] pour le frontend
             # Plus le score brut est négatif → plus anormal → score normalisé positif
