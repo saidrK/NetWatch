@@ -47,4 +47,4 @@ urllib3==2.6.3
 uvicorn[standard]==0.46.0
 websockets==15.0.1
 aiocsv
-aiohttp
+aiohttp>=3.9.0
