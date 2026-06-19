@@ -114,11 +114,9 @@ async def lancer_scan(
                 db.add(eq)
                 await db.flush()
 
-            # Supprimer anciens ports + réinsérer
-            old_ports = await db.execute(select(Port).where(Port.equipement_id == eq.id))
-            for p in old_ports.scalars():
-                await db.delete(p)
-
+            # Supprimer anciens ports directement en SQL
+            from sqlalchemy import delete as sql_delete
+            await db.execute(sql_delete(Port).where(Port.equipement_id == eq.id))
             await db.flush()
 
             for p in ports_list:
