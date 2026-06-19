@@ -151,7 +151,7 @@ async def _construire_payload() -> dict:
                         
                 # On inverse le score pour le front-end
                 # ui_score = -score
-		ui_score = score
+                ui_score = score
 
                 metrics = {
                     "cpu_usage":  metrique.cpu_usage,
